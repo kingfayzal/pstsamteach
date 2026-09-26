@@ -45,3 +45,5 @@ const ONE_HOUR = 60 * 60 * 1000;
 
 export const loginLimiter = createRateLimiter({ limit: 8, windowMs: FIFTEEN_MINUTES });
 export const signupLimiter = createRateLimiter({ limit: 6, windowMs: ONE_HOUR });
+export const requestLimiter = createRateLimiter({ limit: 10, windowMs: ONE_HOUR });
+export const messageLimiter = createRateLimiter({ limit: 30, windowMs: 10 * 60 * 1000 });

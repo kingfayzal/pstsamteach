@@ -68,7 +68,7 @@ export async function getPublicCourse(slug: string) {
       level: true,
       publishedAt: true,
       subject: { select: { name: true, slug: true, color: true } },
-      teacher: { select: { name: true, bio: true } },
+      teacher: { select: { name: true, bio: true, teacherProfile: { select: { slug: true, headline: true, isHidden: true } } } },
       lessons: { orderBy: { position: "asc" }, select: { id: true, title: true, durationMinutes: true } },
       assessments: {
         where: { isPublished: true },

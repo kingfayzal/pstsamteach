@@ -5,13 +5,13 @@ import { SubjectTag } from "@/components/ui/badges";
 import { Facts, PageHeader, Section } from "@/components/ui/layout";
 import { formatRelative } from "@/lib/format";
 import { requireRole } from "@/server/auth/session";
-import { getAdminOverview } from "@/server/queries/admin";
+import { getAdminOverview, getTutoringOverview } from "@/server/queries/admin";
 
 export const metadata: Metadata = { title: "Admin overview" };
 
 export default async function AdminOverviewPage() {
   await requireRole("ADMIN");
-  const { counts, signups, reviewQueue, pending, audit } = await getAdminOverview();
+  const [{ counts, signups, reviewQueue, pending, audit }, tutoring] = await Promise.all([getAdminOverview(), getTutoringOverview()]);
   const newStudents = signups.reduce((sum, d) => sum + d.students, 0);
 
   return (
@@ -33,6 +33,13 @@ export default async function AdminOverviewPage() {
               { label: "Courses in review", value: counts.courses.IN_REVIEW ?? 0 },
               { label: "Teacher applications", value: counts.pendingTeachers },
               { label: "Work awaiting marking", value: counts.awaitingMarking },
+            ]}
+          />
+          <Facts
+            items={[
+              { label: "Students with a teacher", value: tutoring.activePairs },
+              { label: "Requests waiting on teachers", value: tutoring.pendingRequests },
+              { label: "Sessions in the next 7 days", value: tutoring.sessionsThisWeek },
             ]}
           />
         </div>

@@ -135,3 +135,40 @@ export async function makeAssessment(
 export async function enroll(userId: string, courseId: string) {
   return db.enrollment.create({ data: { userId, courseId } });
 }
+
+export async function makeTopic(subjectId: string, name = `Topic ${next()}`) {
+  return db.topic.create({ data: { subjectId, name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-") } });
+}
+
+type ProfileSpec = {
+  headline?: string;
+  about?: string;
+  topicIds?: string[];
+  languages?: string[];
+  windows?: { weekday: number; startMinute: number; endMinute: number }[];
+  timeZone?: string;
+  sessionMinutes?: number;
+  acceptingStudents?: boolean;
+  isHidden?: boolean;
+};
+
+/** A complete, listable profile by default: Monday 18:00–20:00 Lagos, 60-minute sessions. */
+export async function makeTeacherProfile(teacherId: string, spec: ProfileSpec = {}) {
+  const n = next();
+  return db.teacherProfile.create({
+    data: {
+      userId: teacherId,
+      slug: `teacher-${n}`,
+      headline: spec.headline ?? "Patient teacher who explains every step",
+      about: spec.about ?? "I have taught for many years and love helping students who find the subject hard.".padEnd(90, "."),
+      timeZone: spec.timeZone ?? "Africa/Lagos",
+      sessionMinutes: spec.sessionMinutes ?? 60,
+      acceptingStudents: spec.acceptingStudents ?? true,
+      isHidden: spec.isHidden ?? false,
+      meetingUrl: "https://meet.example.com/room",
+      topics: { create: (spec.topicIds ?? []).map((topicId) => ({ topicId })) },
+      languages: { create: (spec.languages ?? ["English"]).map((language) => ({ language })) },
+      availability: { create: spec.windows ?? [{ weekday: 1, startMinute: 18 * 60, endMinute: 20 * 60 }] },
+    },
+  });
+}

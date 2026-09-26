@@ -2,6 +2,7 @@ import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import type { CourseStatus, Role, UserStatus } from "@/generated/prisma/enums";
 import { bucketSignups } from "@/lib/signups";
+import { isListed, profileGaps } from "@/lib/teacher-directory";
 import { db } from "@/server/db";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -208,6 +209,7 @@ export async function listSubjectsWithCounts() {
       color: true,
       isActive: true,
       _count: { select: { courses: true } },
+      topics: { orderBy: [{ position: "asc" }, { name: "asc" }], select: { id: true, name: true, _count: { select: { teachers: true } } } },
     },
   });
 }
@@ -243,4 +245,71 @@ export async function getReviewCount(): Promise<number> {
     db.user.count({ where: { role: "TEACHER", status: "PENDING" } }),
   ]);
   return courses + applicants;
+}
+
+/** Every teacher profile with its directory status, for moderation. */
+export async function listTeacherProfilesForAdmin() {
+  const profiles = await db.teacherProfile.findMany({
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      slug: true,
+      headline: true,
+      about: true,
+      isHidden: true,
+      acceptingStudents: true,
+      user: { select: { id: true, name: true, status: true, role: true } },
+      _count: { select: { topics: true, languages: true, availability: true } },
+    },
+  });
+  const teacherIds = profiles.map((p) => p.user.id);
+  const [reviews, active, pending] = await Promise.all([
+    db.teacherReview.groupBy({ by: ["teacherId"], where: { teacherId: { in: teacherIds }, isHidden: false }, _avg: { rating: true }, _count: { _all: true } }),
+    db.teacherConnection.groupBy({ by: ["teacherId"], where: { teacherId: { in: teacherIds }, status: "ACTIVE" }, _count: { _all: true } }),
+    db.teacherConnection.groupBy({ by: ["teacherId"], where: { teacherId: { in: teacherIds }, status: "PENDING" }, _count: { _all: true } }),
+  ]);
+  return profiles.map((p) => {
+    const gaps = profileGaps({
+      headline: p.headline,
+      about: p.about,
+      topicCount: p._count.topics,
+      languageCount: p._count.languages,
+      windowCount: p._count.availability,
+    });
+    const r = reviews.find((x) => x.teacherId === p.user.id);
+    return {
+      ...p,
+      gaps,
+      listed: isListed({ gaps, isHidden: p.isHidden, role: p.user.role, status: p.user.status }),
+      average: r?._avg.rating ? Math.round(r._avg.rating * 10) / 10 : null,
+      reviewCount: r?._count._all ?? 0,
+      activeStudents: active.find((x) => x.teacherId === p.user.id)?._count._all ?? 0,
+      pendingRequests: pending.find((x) => x.teacherId === p.user.id)?._count._all ?? 0,
+    };
+  });
+}
+
+/** A teacher's profile flags and every review (including hidden ones), for the people page. */
+export async function getTeacherModeration(teacherId: string) {
+  const profile = await db.teacherProfile.findUnique({
+    where: { userId: teacherId },
+    select: { id: true, slug: true, isHidden: true, acceptingStudents: true },
+  });
+  if (!profile) return null;
+  const reviews = await db.teacherReview.findMany({
+    where: { teacherId },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, rating: true, body: true, isHidden: true, createdAt: true, student: { select: { name: true } } },
+  });
+  return { profile, reviews };
+}
+
+export async function getTutoringOverview(now = new Date()) {
+  const weekAhead = new Date(now.getTime() + 7 * DAY_MS);
+  const [activePairs, pendingRequests, sessionsThisWeek] = await Promise.all([
+    db.teacherConnection.count({ where: { status: "ACTIVE" } }),
+    db.teacherConnection.count({ where: { status: "PENDING" } }),
+    db.tutoringSession.count({ where: { status: "CONFIRMED", startsAt: { gte: now, lt: weekAhead } } }),
+  ]);
+  return { activePairs, pendingRequests, sessionsThisWeek };
 }

@@ -5,7 +5,8 @@ import { homePathFor, safeNextPath } from "@/lib/routes";
 import { formDataToObject, type FormState } from "@/lib/validation/form";
 import { loginLimiter, signupLimiter } from "@/server/auth/rate-limit";
 import { endSession, startSession } from "@/server/auth/session";
-import { applyToTeach, authenticate, registerStudent } from "@/server/services/accounts";
+import { getBrowserTimeZone } from "@/server/auth/viewer";
+import { applyToTeach, authenticate, captureTimeZone, registerStudent } from "@/server/services/accounts";
 import { clientIp, errorState, readString } from "./helpers";
 
 function tooManyAttempts(retryAfterMs: number): FormState {
@@ -20,6 +21,7 @@ export async function signupAction(_prev: FormState, form: FormData): Promise<Fo
   const result = await registerStudent(formDataToObject(form));
   if (!result.ok) return errorState(result, form);
   await startSession(result.data.id);
+  await captureTimeZone(result.data.id, await getBrowserTimeZone());
   redirect(safeNextPath(readString(form, "next")) ?? "/learn?notice=welcome");
 }
 
@@ -30,6 +32,7 @@ export async function applyToTeachAction(_prev: FormState, form: FormData): Prom
   const result = await applyToTeach(formDataToObject(form));
   if (!result.ok) return errorState(result, form);
   await startSession(result.data.id);
+  await captureTimeZone(result.data.id, await getBrowserTimeZone());
   redirect("/teach/pending");
 }
 
@@ -44,6 +47,7 @@ export async function loginAction(_prev: FormState, form: FormData): Promise<For
 
   loginLimiter.reset(key);
   await startSession(result.data.id);
+  await captureTimeZone(result.data.id, await getBrowserTimeZone());
   const next = safeNextPath(readString(form, "next"));
   redirect(next ?? homePathFor(result.data));
 }

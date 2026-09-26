@@ -8,16 +8,25 @@ import { PageHeader, Section } from "@/components/ui/layout";
 import { Tick } from "@/components/ui/marks";
 import { formatDate, formatRelative, plural } from "@/lib/format";
 import { ROLE_LABEL, STATUS_TONE, USER_STATUS_LABEL } from "@/lib/people";
-import { approveTeacherAction, changeRoleAction, declineTeacherAction, reactivateUserAction, suspendUserAction } from "@/server/actions/admin";
+import {
+  approveTeacherAction,
+  changeRoleAction,
+  declineTeacherAction,
+  reactivateUserAction,
+  setProfileHiddenAction,
+  setReviewHiddenAction,
+  suspendUserAction,
+} from "@/server/actions/admin";
+import { Stars } from "@/components/teachers/rating";
 import { requireRole } from "@/server/auth/session";
-import { getUserDetail } from "@/server/queries/admin";
+import { getTeacherModeration, getUserDetail } from "@/server/queries/admin";
 
 export const metadata: Metadata = { title: "Person" };
 
 export default async function PersonPage(props: PageProps<"/admin/people/[userId]">) {
   const admin = await requireRole("ADMIN");
   const { userId } = await props.params;
-  const person = await getUserDetail(userId);
+  const [person, moderation] = await Promise.all([getUserDetail(userId), getTeacherModeration(userId)]);
   if (!person) notFound();
   const isSelf = person.id === admin.id;
 
@@ -48,6 +57,52 @@ export default async function PersonPage(props: PageProps<"/admin/people/[userId
                 <ActionButton action={approveTeacherAction.bind(null, person.id)} label="Approve as teacher" pendingLabel="Approving…" variant="primary" />
                 <ActionButton action={declineTeacherAction.bind(null, person.id)} label="Decline" pendingLabel="Declining…" variant="danger" confirm="Decline this application? Their account will become a student account." />
               </div>
+            </Section>
+          ) : null}
+
+          {moderation ? (
+            <Section
+              title="Directory profile"
+              actions={
+                <Link href={`/teachers/${moderation.profile.slug}`} className="text-base font-bold underline decoration-rule underline-offset-4">
+                  View profile
+                </Link>
+              }
+            >
+              <div className="flex flex-wrap items-center gap-4">
+                <Pill tone={moderation.profile.isHidden ? "bad" : "good"}>{moderation.profile.isHidden ? "Hidden from the directory" : "Visible"}</Pill>
+                <ActionButton
+                  action={setProfileHiddenAction.bind(null, moderation.profile.id, !moderation.profile.isHidden)}
+                  label={moderation.profile.isHidden ? "Show in directory" : "Hide from directory"}
+                  pendingLabel="Saving…"
+                  variant={moderation.profile.isHidden ? "secondary" : "danger"}
+                />
+              </div>
+              {moderation.reviews.length ? (
+                <ul className="divide-y divide-rule border-y border-rule">
+                  {moderation.reviews.map((review) => (
+                    <li key={review.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <Stars rating={review.rating} />
+                          <span className="text-sm font-bold text-ink">{review.student.name}</span>
+                          <span className="text-sm text-muted">{formatDate(review.createdAt)}</span>
+                          {review.isHidden ? <Pill tone="bad">Hidden</Pill> : null}
+                        </div>
+                        <p className="max-w-[65ch] text-base whitespace-pre-line text-ink-soft">{review.body}</p>
+                      </div>
+                      <ActionButton
+                        action={setReviewHiddenAction.bind(null, review.id, !review.isHidden)}
+                        label={review.isHidden ? "Restore review" : "Hide review"}
+                        pendingLabel="Saving…"
+                        variant={review.isHidden ? "secondary" : "danger"}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-base text-muted">No reviews yet.</p>
+              )}
             </Section>
           ) : null}
 

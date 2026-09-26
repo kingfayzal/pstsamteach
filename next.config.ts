@@ -33,6 +33,10 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
   serverExternalPackages: ["@libsql/client", "@prisma/adapter-libsql"],
+  experimental: {
+    // Teacher photos are capped at 2 MB; leave room for multipart overhead.
+    serverActions: { bodySizeLimit: "3mb" },
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

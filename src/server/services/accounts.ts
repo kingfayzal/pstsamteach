@@ -6,11 +6,16 @@ import {
   signupSchema,
   teacherApplicationSchema,
 } from "@/lib/validation/auth";
+import { z } from "zod";
+import { isValidTimeZone } from "@/lib/time-zones";
+import { timeZoneSchema } from "@/lib/validation/teacher";
 import { getDummyHash, hashPassword, verifyPassword } from "@/server/auth/password";
 import { db } from "@/server/db";
 import { type Actor, fail, invalid, ok, type ServiceResult } from "./result";
 
 export const actorSelect = { id: true, name: true, email: true, role: true, status: true } as const;
+
+const timeZoneInputSchema = z.object({ timeZone: timeZoneSchema });
 
 const EMAIL_TAKEN = "An account with that email already exists. Log in instead.";
 const BAD_CREDENTIALS = "That email and password don't match an account.";
@@ -108,4 +113,17 @@ export async function changePassword(actor: Actor, input: unknown): Promise<Serv
   }
   await db.user.update({ where: { id: actor.id }, data: { passwordHash: await hashPassword(parsed.data.newPassword) } });
   return ok(null);
+}
+
+export async function setTimeZone(actor: Actor, input: unknown): Promise<ServiceResult<null>> {
+  const parsed = timeZoneInputSchema.safeParse(input);
+  if (!parsed.success) return invalid(parsed.error);
+  await db.user.update({ where: { id: actor.id }, data: { timeZone: parsed.data.timeZone } });
+  return ok(null);
+}
+
+/** Remember the browser's time zone the first time we see it; never overwrite a chosen one. */
+export async function captureTimeZone(userId: string, timeZone: unknown): Promise<void> {
+  if (!isValidTimeZone(timeZone)) return;
+  await db.user.updateMany({ where: { id: userId, timeZone: null }, data: { timeZone } });
 }

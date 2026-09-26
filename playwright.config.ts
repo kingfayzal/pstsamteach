@@ -31,6 +31,8 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: "retain-on-failure",
+    // Fixed zone so availability and slot times are deterministic.
+    timezoneId: "Africa/Lagos",
     screenshot: "only-on-failure",
   },
   projects: [

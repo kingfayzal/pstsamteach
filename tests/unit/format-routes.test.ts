@@ -48,3 +48,14 @@ describe("format helpers", () => {
     expect(toDateTimeLocal(new Date("2026-09-26T12:00:00"))).toBe("2026-09-26T12:00");
   });
 });
+
+describe("name helpers", () => {
+  it("shortens names for public attributions", async () => {
+    const { initials, shortName } = await import("@/lib/format");
+    expect(shortName("Ada Obi")).toBe("Ada O.");
+    expect(shortName("Mary Jane Watson")).toBe("Mary W.");
+    expect(shortName("Cher")).toBe("Cher");
+    expect(initials("Ruth Mensah")).toBe("RM");
+    expect(initials("Cher")).toBe("C");
+  });
+});

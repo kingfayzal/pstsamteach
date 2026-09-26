@@ -55,3 +55,28 @@ export function SubjectForm({ action, subject, idPrefix, submitLabel }: { action
     </form>
   );
 }
+
+/** Add a topic, or rename one when `topic` is given. */
+export function TopicForm({ action, topic, idPrefix }: { action: Action; topic?: { name: string }; idPrefix: string }) {
+  const [state, formAction] = useActionState(action, undefined);
+  return (
+    <form action={formAction} className="flex flex-wrap items-end gap-2">
+      <div className="min-w-[12rem] flex-1">
+        <label htmlFor={`${idPrefix}-topic`} className={topic ? "sr-only" : "mb-1 block text-sm font-bold text-ink-soft"}>
+          {topic ? `Rename ${topic.name}` : "New topic"}
+        </label>
+        <input
+          id={`${idPrefix}-topic`}
+          name="name"
+          defaultValue={typeof state?.values?.name === "string" ? state.values.name : topic?.name}
+          placeholder={topic ? undefined : "e.g. Pharmacology"}
+          className="block w-full rounded-control border border-rule bg-sheet px-3 py-1.5 text-base text-ink"
+        />
+      </div>
+      <SubmitButton size="sm" variant={topic ? "secondary" : "primary"} pendingLabel="Saving…">
+        {topic ? "Rename" : "Add topic"}
+      </SubmitButton>
+      <FormMessage state={state} className="w-full text-sm" />
+    </form>
+  );
+}

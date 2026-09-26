@@ -82,3 +82,46 @@ first for logic, 80% coverage target on `lib/` and `server/`.
 - In-memory rate limiter resets per server instance; swap for Redis/Upstash when deployed to more than one instance.
 - Lesson content is Markdown (no raw HTML). Video embeds limited to YouTube/Vimeo.
 - File uploads for assignments are text-only in v1 (no storage bucket yet).
+
+---
+
+# Phase 2 — Choose your teacher (Preply-style)
+
+Students browse every approved teacher, filter by what and when they teach,
+read profiles, and pick the teacher they connect with. Picking a teacher opens
+an ongoing one-to-one relationship: live sessions booked from the teacher's
+availability, and a message thread.
+
+## Flow
+
+```
+Directory (/teachers) --filter--> Profile (/teachers/[slug]) --Choose--> Request (goals + optional first session)
+                                                                          |
+Teacher: /teach/students  <-------------------- PENDING ------------------+
+   accept -> ACTIVE (first session CONFIRMED)      decline -> DECLINED (note shown to student)
+ACTIVE: book sessions from open slots, message, review; either side can end -> ENDED (future sessions cancelled)
+```
+
+## Model
+
+- `TeacherProfile` (1:1 with a teacher user): headline, about, teaching style, experience, qualifications,
+  intro video, meeting link, time zone, session length, accepting-new-students, admin `isHidden`.
+  `ProfilePhoto` holds the image bytes separately so list queries never load blobs.
+- `Topic` belongs to a `Subject` (admin-managed). Teachers pick topics (`TeacherTopic`) and languages (`TeacherLanguage`).
+- `AvailabilityWindow`: weekly recurring windows in the teacher's time zone (weekday + start/end minute).
+- `TeacherConnection`: one row per student–teacher pair, `PENDING | ACTIVE | DECLINED | ENDED`.
+- `TutoringSession`: a live 1:1 session (`REQUESTED | CONFIRMED | CANCELLED`), UTC instants.
+- `Message` (per connection), `TeacherReview` (one per student per teacher, admin-hideable), `SavedTeacher`.
+
+## Rules
+
+- Listed in the directory only when the teacher is active, not hidden, and the profile is complete
+  (headline, about ≥ 80 chars, a topic, a language, some availability).
+- Requests only to listed teachers accepting new students; max 5 pending requests per student.
+- Slots: next 14 days, 30-minute steps, at least 12 hours' notice, never overlapping the teacher's
+  confirmed sessions (or live requests) or the student's own sessions. The server regenerates slots
+  to validate every booking; SQLite's serialised writes stop two people taking the same slot.
+- Messages while `PENDING` or `ACTIVE`. Reviews once the student has had at least one session.
+- Times are stored in UTC and shown in the viewer's time zone (account setting, else the browser's,
+  captured in a cookie).
+- No prices: pricing hasn't been decided.

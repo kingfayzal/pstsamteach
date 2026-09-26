@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible_Next, Kalam } from "next/font/google";
+import { TimeZoneSync } from "@/components/shell/time-zone-sync";
 import { SITE } from "@/lib/site";
 import "./globals.css";
 
@@ -31,7 +32,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en-GB" className={`${atkinson.variable} ${kalam.variable} antialiased`}>
-      <body className="min-h-dvh">{children}</body>
+      <body className="min-h-dvh">
+        <TimeZoneSync />
+        {children}
+      </body>
     </html>
   );
 }

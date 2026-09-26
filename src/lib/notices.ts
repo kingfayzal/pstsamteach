@@ -20,6 +20,14 @@ export const NOTICES = {
   "course-restored": "Restored to the catalog.",
   "teacher-approved": "Approved. They can create courses now.",
   "teacher-declined": "Declined. Their account now works as a student account.",
+  "request-sent": "Request sent. Your teacher will reply here, usually within a day or two.",
+  "request-accepted": "Accepted. You're now working together, and any requested session is confirmed.",
+  "request-declined": "Declined. The student can see your note.",
+  "request-withdrawn": "Request withdrawn.",
+  "connection-ended": "You're no longer working together. Future sessions were cancelled.",
+  "session-booked": "Session booked. It's in your upcoming sessions below.",
+  "session-cancelled": "Session cancelled.",
+  "profile-created": "Your teacher profile is ready to fill in. Students will see it once it's complete.",
 } as const;
 
 export type NoticeKey = keyof typeof NOTICES;

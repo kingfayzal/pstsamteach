@@ -17,6 +17,9 @@ import {
 } from "@/server/services/admin";
 import { deleteAnnouncement, postPlatformAnnouncement } from "@/server/services/announcements";
 import { changeCourseStatus, setCourseFeatured } from "@/server/services/courses";
+import { setProfileHidden } from "@/server/services/teacher-profiles";
+import { setReviewHidden } from "@/server/services/teacher-social";
+import { createTopic, deleteTopic, renameTopic } from "@/server/services/topics";
 import { errorState, readString, successState } from "./helpers";
 
 function refreshAdmin() {
@@ -135,4 +138,49 @@ export async function deletePlatformAnnouncementAction(announcementId: string, _
   if (!result.ok) return errorState(result);
   refreshAdmin();
   return successState("Announcement deleted.");
+}
+
+export async function setProfileHiddenAction(profileId: string, hidden: boolean, _prev: FormState): Promise<FormState> {
+  const admin = await requireRole("ADMIN");
+  const result = await setProfileHidden(admin, profileId, hidden);
+  if (!result.ok) return errorState(result);
+  refreshAdmin();
+  revalidatePath("/teachers", "layout");
+  return successState(hidden ? "Hidden from the directory." : "Back in the directory.");
+}
+
+export async function setReviewHiddenAction(reviewId: string, hidden: boolean, _prev: FormState): Promise<FormState> {
+  const admin = await requireRole("ADMIN");
+  const result = await setReviewHidden(admin, reviewId, hidden);
+  if (!result.ok) return errorState(result);
+  refreshAdmin();
+  revalidatePath("/teachers", "layout");
+  return successState(hidden ? "Review hidden." : "Review restored.");
+}
+
+export async function createTopicAction(subjectId: string, _prev: FormState, form: FormData): Promise<FormState> {
+  const admin = await requireRole("ADMIN");
+  const result = await createTopic(admin, subjectId, formDataToObject(form));
+  if (!result.ok) return errorState(result, form);
+  refreshAdmin();
+  revalidatePath("/teachers", "layout");
+  return successState("Topic added. Teachers can pick it on their profile now.");
+}
+
+export async function renameTopicAction(topicId: string, _prev: FormState, form: FormData): Promise<FormState> {
+  const admin = await requireRole("ADMIN");
+  const result = await renameTopic(admin, topicId, formDataToObject(form));
+  if (!result.ok) return errorState(result, form);
+  refreshAdmin();
+  revalidatePath("/teachers", "layout");
+  return successState("Topic renamed.");
+}
+
+export async function deleteTopicAction(topicId: string, _prev: FormState): Promise<FormState> {
+  const admin = await requireRole("ADMIN");
+  const result = await deleteTopic(admin, topicId);
+  if (!result.ok) return errorState(result);
+  refreshAdmin();
+  revalidatePath("/teachers", "layout");
+  return successState("Topic removed.");
 }

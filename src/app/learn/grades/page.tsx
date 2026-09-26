@@ -22,7 +22,7 @@ export default async function GradesPage() {
           Take a quiz or hand in an assignment and your results will be listed here.
         </EmptyState>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full min-w-[40rem] border-collapse text-left">
             <thead>
               <tr className="border-b-2 border-ink text-sm text-ink-soft">

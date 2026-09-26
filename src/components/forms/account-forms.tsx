@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
-import { FormMessage, TextAreaField, TextField } from "@/components/ui/fields";
+import { FormMessage, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { changePasswordAction, updateProfileAction } from "@/server/actions/account";
+import { changePasswordAction, setTimeZoneAction, updateProfileAction } from "@/server/actions/account";
 
 export function ProfileForm({ name, bio, showBio }: { name: string; bio: string | null; showBio: boolean }) {
   const [state, action] = useActionState(updateProfileAction, undefined);
@@ -38,6 +38,24 @@ export function PasswordForm() {
       <TextField name="confirmPassword" type="password" label="Confirm new password" autoComplete="new-password" required state={state} />
       <FormMessage state={state} />
       <SubmitButton pendingLabel="Changing…">Change password</SubmitButton>
+    </form>
+  );
+}
+
+export function TimeZoneForm({ current, suggested, zones }: { current: string | null; suggested: string; zones: string[] }) {
+  const [state, action] = useActionState(setTimeZoneAction, undefined);
+  return (
+    <form action={action} className="max-w-xl space-y-5">
+      <SelectField
+        name="timeZone"
+        label="Time zone"
+        hint={current ? undefined : "Not saved yet. This is our best guess from your browser."}
+        options={zones.map((z) => ({ value: z, label: z.replace(/_/g, " ") }))}
+        defaultValue={current ?? suggested}
+        state={state}
+      />
+      <FormMessage state={state} />
+      <SubmitButton pendingLabel="Saving…">Save time zone</SubmitButton>
     </form>
   );
 }

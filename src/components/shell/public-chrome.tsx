@@ -11,6 +11,9 @@ export function PublicHeader({ user }: { user: Actor | null }) {
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-4 sm:px-8">
         <Wordmark />
         <nav aria-label="Main" className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <Link href="/teachers" className="text-base font-bold text-ink-soft hover:text-ink">
+            Teachers
+          </Link>
           <Link href="/courses" className="text-base font-bold text-ink-soft hover:text-ink">
             Courses
           </Link>
@@ -47,6 +50,7 @@ export function PublicFooter() {
         </div>
         <nav aria-label="Learners" className="space-y-2 text-sm">
           <p className="font-bold text-ink">Learners</p>
+          <Link href="/teachers" className="block hover:text-ink">Find a teacher</Link>
           <Link href="/courses" className="block hover:text-ink">Browse courses</Link>
           <Link href="/signup" className="block hover:text-ink">Create a student account</Link>
           <Link href="/login" className="block hover:text-ink">Log in</Link>

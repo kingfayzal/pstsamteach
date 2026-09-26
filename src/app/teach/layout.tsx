@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/shell/app-shell";
-import { AREA_LABEL, navFor } from "@/lib/nav";
+import { AREA_LABEL, navFor, PENDING_TEACHER_NAV } from "@/lib/nav";
 import { requireRole } from "@/server/auth/session";
+import { countPendingRequests, countUnreadMessages } from "@/server/queries/connections";
 import { getTeacherStats } from "@/server/queries/teacher";
 
 export default async function TeachLayout({ children }: LayoutProps<"/teach">) {
@@ -8,15 +9,16 @@ export default async function TeachLayout({ children }: LayoutProps<"/teach">) {
 
   if (user.status === "PENDING") {
     return (
-      <AppShell area={AREA_LABEL.TEACHER} home="/teach/pending" nav={[{ href: "/teach/pending", label: "Your application" }]} user={user}>
+      <AppShell area={AREA_LABEL.TEACHER} home="/teach/pending" nav={[...PENDING_TEACHER_NAV]} user={user}>
         {children}
       </AppShell>
     );
   }
 
-  const stats = await getTeacherStats(user);
+  const [stats, requests, unread] = await Promise.all([getTeacherStats(user), countPendingRequests(user.id), countUnreadMessages(user.id)]);
+  const nav = navFor("TEACHER", { "/teach/marking": stats.awaiting, "/teach/students": requests + unread });
   return (
-    <AppShell area={AREA_LABEL.TEACHER} home="/teach" nav={navFor("TEACHER", { "/teach/marking": stats.awaiting })} user={user}>
+    <AppShell area={AREA_LABEL.TEACHER} home="/teach" nav={nav} user={user}>
       {children}
     </AppShell>
   );

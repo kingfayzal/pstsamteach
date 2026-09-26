@@ -112,3 +112,36 @@ Plain, direct, sentence case. Buttons say exactly what happens ("Enrol in
 course", "Submit for review", "Save lesson"), and the success notice repeats
 the verb ("Enrolled", "Submitted for review"). Errors explain how to fix
 things and never apologise. Empty states tell you what to do next.
+
+---
+
+# Phase 2: choosing a teacher
+
+The directory has one job: help a student decide who they'd like to learn
+with. Preply-style discovery, in the same exercise-book language.
+
+- **Directory rows, not cards.** Each teacher is a ruled row (photo, name and
+  headline, subject-coloured topic tags, languages, a short excerpt, the next
+  free time), with rating, student count and actions in a right-hand column.
+  This keeps to the "lists rather than card grids" rule, and it scans like a
+  staff list.
+- **Photo or monogram.** Real photos when teachers upload them. Otherwise
+  initials on the teacher's own subject colour, so the colour still says what
+  they teach.
+- **The timetable is the profile's memorable element.** A school timetable
+  grid: days across, times of day down, ink-filled cells where the teacher
+  usually teaches, always converted to the viewer's time zone. It comes from
+  the subject's own vernacular and answers the one question every student
+  has ("can I actually make their times?").
+- **Filters in one row above the list** (subject, topic, language, day, time
+  of day, sort, search), as plain GET controls, so every filtered view has a
+  shareable URL.
+- **Ratings stay plain.** A single ink star with a number. Reviews show five
+  small stars, then the student's first name and initial. Handwriting remains
+  reserved for a teacher's marking.
+- **Slot picker:** columns of days with time chips, scrolling sideways on
+  phones inside a positioned container, so screen-reader-only inputs can't
+  widen the page.
+- **Copy:** "Choose Ruth as your teacher", "Send request to Ruth", "Accept
+  Kemi", "Book this session". Actions keep their verb through the confirmation
+  notices.

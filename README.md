@@ -2,9 +2,9 @@
 
 A teaching platform for **English, Mathematics and Nursing** with three sides:
 
-- **Students** browse the catalog, enrol for free, work through lessons, take auto-marked quizzes, hand in written assignments, and see their grades and teacher feedback.
-- **Teachers** apply to teach, build courses (lessons with Markdown and optional video, quizzes, assignments), submit them for review, mark submitted work, post announcements, and follow each student's progress.
-- **Admins** (the platform owners) approve teachers, review and publish courses, feature or archive them, suspend accounts, manage subjects, post platform-wide announcements, and read the activity log and platform numbers.
+- **Students** choose their own teacher from a directory (filter by subject, topic, language, day and time of day; read profiles, watch intro videos, check the availability timetable and reviews). They send a request, book live one-to-one sessions once accepted, and message their teacher. They can also enrol in courses, work through lessons, take auto-marked quizzes, hand in written assignments, and see grades and feedback.
+- **Teachers** apply to teach, build a directory profile (photo, headline, about, teaching style, qualifications, topics, languages, intro video, meeting link, weekly availability), accept or decline student requests, run one-to-one sessions, and message students. They also build courses, submit them for review, mark submitted work, post announcements, and follow each student's progress.
+- **Admins** (the platform owners) approve teachers, moderate the teacher directory (hide profiles or reviews), manage subjects and their topics, review and publish courses, suspend accounts, post platform-wide announcements, and read the activity log and platform numbers.
 
 > "SamTeach" is a working name taken from the repository. Change it in `src/lib/site.ts`.
 
@@ -24,9 +24,9 @@ npm run dev          # http://localhost:3000
 | Account | Email |
 | --- | --- |
 | Admin | `admin@example.com` |
-| Teachers (English, Maths, Nursing) | `grace@`, `daniel@`, `ruth@example.com` |
+| Teachers (English, Maths, Nursing) | `grace@`, `daniel@`, `ruth@example.com`, plus `blessing@`, `kwame@`, `amaka@`, `yusuf@example.com` |
 | Pending teacher application | `samuel@example.com` |
-| Students | `ada@`, `kemi@`, `tomi@example.com` (plus 8 recent sign-ups) |
+| Students | `ada@` (working with Ruth, waiting on Daniel), `kemi@`, `tomi@example.com` (plus 8 recent sign-ups) |
 
 ## Scripts
 
@@ -72,6 +72,8 @@ docs/             PLAN.md (build plan), DESIGN.md (design rationale)
 
 **Authorization lives in the service and query layer**, not just the UI: every service takes the acting user and checks role, status and ownership itself. Things you can't manage come back as "not found", so their existence doesn't leak. Quiz answer keys never reach the browser until after a quiz is submitted (checked by an E2E test).
 
+**Choosing a teacher:** a student sends a request (with their goals and, optionally, a first session time) to a listed teacher who is taking students. The teacher accepts (the first session is confirmed) or declines with a note. Once accepted, the student books sessions from the teacher's open slots: next 14 days, 30-minute steps, at least 12 hours ahead, never clashing with either person's other sessions. Times are stored in UTC and shown in each viewer's own time zone. Sessions happen on the teacher's own meeting link, which is only shown on confirmed sessions.
+
 **Course lifecycle:** Draft → In review (teacher submits) → Published (admin approves) → Archived. Admins can send a course back with notes, or unpublish it. Teachers can't edit a course while it's in review.
 
 ## Security
@@ -93,8 +95,10 @@ docs/             PLAN.md (build plan), DESIGN.md (design rationale)
 
 ## Not in v1 (decisions needed)
 
-- **Payments.** Enrolment is free; no pricing has been decided.
+- **Payments and pricing.** Enrolment and sessions are free; no pricing has been decided, so teacher profiles show no rates.
+- **Built-in video.** Sessions use each teacher's own Zoom/Meet/Teams link.
+- **Notifications.** New requests, messages and bookings show as in-app badges only; email or SMS needs a provider.
 - **Email.** No verification, password reset or notification emails yet. Needs an email provider.
-- **File uploads.** Assignments are typed answers; attachments need a storage bucket.
+- **File uploads.** Assignments are typed answers. Teacher photos are stored in the database (2 MB cap), which is fine at this scale; move them to object storage later.
 - **Rate limiting across instances.** Swap the in-memory limiter for Redis/Upstash when running more than one server.
 - **Brand.** The name and support email in `src/lib/site.ts` are placeholders.

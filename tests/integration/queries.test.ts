@@ -244,6 +244,6 @@ describe("admin queries", () => {
 
   it("reads a profile", async () => {
     const student = await makeStudent();
-    expect(await getProfile(student.id)).toEqual({ name: student.name, bio: null });
+    expect(await getProfile(student.id)).toEqual({ name: student.name, bio: null, timeZone: null });
   });
 });

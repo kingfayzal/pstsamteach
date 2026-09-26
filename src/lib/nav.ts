@@ -11,20 +11,30 @@ export const AREA_LABEL: Readonly<Record<Role, string>> = {
 export const STUDENT_NAV: readonly NavEntry[] = [
   { href: "/learn", label: "Dashboard", exact: true },
   { href: "/learn/courses", label: "My courses" },
+  { href: "/learn/teachers", label: "My teachers" },
   { href: "/learn/grades", label: "Grades" },
+  { href: "/teachers", label: "Find a teacher" },
   { href: "/courses", label: "Find a course" },
 ];
 
 export const TEACHER_NAV: readonly NavEntry[] = [
   { href: "/teach", label: "Dashboard", exact: true },
+  { href: "/teach/students", label: "Students" },
   { href: "/teach/courses", label: "Courses" },
   { href: "/teach/marking", label: "Marking" },
+  { href: "/teach/profile", label: "Your profile" },
+];
+
+export const PENDING_TEACHER_NAV: readonly NavEntry[] = [
+  { href: "/teach/pending", label: "Your application" },
+  { href: "/teach/profile", label: "Your profile" },
 ];
 
 export const ADMIN_NAV: readonly NavEntry[] = [
   { href: "/admin", label: "Overview", exact: true },
   { href: "/admin/review", label: "Review queue" },
   { href: "/admin/courses", label: "Courses" },
+  { href: "/admin/teachers", label: "Teachers" },
   { href: "/admin/people", label: "People" },
   { href: "/admin/subjects", label: "Subjects" },
   { href: "/admin/announcements", label: "Announcements" },

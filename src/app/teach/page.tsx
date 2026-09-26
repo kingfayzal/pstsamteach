@@ -4,8 +4,11 @@ import { AnnouncementList } from "@/components/course/announcement-list";
 import { TeacherCourseList } from "@/components/course/teacher-course-list";
 import { LinkButton } from "@/components/ui/button";
 import { EmptyState, Facts, PageHeader, Section } from "@/components/ui/layout";
+import { UpcomingSessions } from "@/components/teachers/upcoming-sessions";
 import { formatRelative } from "@/lib/format";
 import { requireRole } from "@/server/auth/session";
+import { getViewerTimeZone } from "@/server/auth/viewer";
+import { listTeacherConnections, listUpcomingSessions } from "@/server/queries/connections";
 import { getMarkingQueue, getTeacherAnnouncements, getTeacherCourses, getTeacherStats } from "@/server/queries/teacher";
 
 export const metadata: Metadata = { title: "Teacher dashboard" };
@@ -18,6 +21,7 @@ export default async function TeacherDashboard() {
     getMarkingQueue(user, 5),
     getTeacherAnnouncements(3),
   ]);
+  const [sessions, students, timeZone] = await Promise.all([listUpcomingSessions(user.id, "TEACHER"), listTeacherConnections(user.id), getViewerTimeZone()]);
 
   return (
     <>
@@ -28,6 +32,16 @@ export default async function TeacherDashboard() {
       />
 
       <div className="space-y-14">
+        {students.pending.length ? (
+          <div className="flex flex-col gap-3 border border-amber/30 bg-amber-wash px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-base font-bold text-amber">
+              {students.pending.length === 1 ? "1 student has" : `${students.pending.length} students have`} asked you to be their teacher.
+            </p>
+            <LinkButton href="/teach/students" size="sm">
+              Review requests
+            </LinkButton>
+          </div>
+        ) : null}
         <Facts
           items={[
             { label: "Students enrolled", value: stats.students },
@@ -35,6 +49,20 @@ export default async function TeacherDashboard() {
             { label: "Waiting to be marked", value: stats.awaiting },
           ]}
         />
+
+        <Section title="Upcoming sessions" actions={<Link href="/teach/students" className="text-base font-bold underline decoration-rule underline-offset-4">Your students</Link>}>
+          {sessions.length ? (
+            <UpcomingSessions sessions={sessions} timeZone={timeZone} linkBase="/teach/students" />
+          ) : (
+            <p className="text-base text-muted">
+              No live sessions booked.{" "}
+              <Link href="/teach/profile" className="font-bold text-ink underline decoration-rule underline-offset-4">
+                Keep your profile and availability up to date
+              </Link>{" "}
+              so students can find and book you.
+            </p>
+          )}
+        </Section>
 
         <Section title="Marking queue" actions={queue.length ? <Link href="/teach/marking" className="text-base font-bold underline decoration-rule underline-offset-4">See all</Link> : null}>
           {queue.length === 0 ? (

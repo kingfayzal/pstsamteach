@@ -15,6 +15,7 @@ import { hashPassword } from "../src/server/auth/password-core";
 import { grammar, persuasiveEssay } from "./seed-content/english";
 import { algebra, fractions } from "./seed-content/maths";
 import { dosage, infection } from "./seed-content/nursing";
+import { seedTeachers } from "./seed-content/seed-teachers";
 import type { SeedCourse } from "./seed-content/types";
 
 const url = process.env.DATABASE_URL;
@@ -200,6 +201,7 @@ async function main() {
     const email = `${name.split(" ")[0].toLowerCase()}@example.com`;
     const created = await db.user.create({ data: { name, email, passwordHash, role: "STUDENT", status: "ACTIVE", createdAt: daysAgo(days) } });
     recentIds.push(created.id);
+    ids[name.split(" ")[0].toLowerCase()] = created.id;
   }
 
   const courses: Record<string, CreatedCourse> = {};
@@ -273,6 +275,9 @@ async function main() {
     await db.enrollment.create({ data: { userId: id, courseId: courses[openCourses[i % openCourses.length]].id, createdAt: daysAgo(RECENT_STUDENTS[i][1]) } });
   }
 
+  // Teacher directory: topics, profiles, requests, sessions, messages, reviews.
+  const extraTeachers = await seedTeachers(db, ids, subjectIds, passwordHash);
+
   // Announcements.
   await db.announcement.create({
     data: {
@@ -311,6 +316,7 @@ async function main() {
   for (const person of [...Object.values(PEOPLE), { name: applicant.name, email: applicant.email, role: "TEACHER (pending)" }]) {
     console.log(`  ${person.role.padEnd(18)} ${person.email}`);
   }
+  console.log(`  TEACHER            ${extraTeachers.join(", ")}`);
   console.log(`  plus ${RECENT_STUDENTS.length} recently joined students (firstname@example.com)`);
   if (process.env.SEED_DEMO_PASSWORD) {
     console.log("Password: the value of SEED_DEMO_PASSWORD.\n");

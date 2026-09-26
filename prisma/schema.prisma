@@ -48,6 +48,19 @@ enum Audience {
   TEACHERS
 }
 
+enum ConnectionStatus {
+  PENDING
+  ACTIVE
+  DECLINED
+  ENDED
+}
+
+enum TutoringStatus {
+  REQUESTED
+  CONFIRMED
+  CANCELLED
+}
+
 model User {
   id                   String     @id @default(cuid())
   email                String     @unique
@@ -60,6 +73,8 @@ model User {
   applicationNote      String?
   applicationSubjectId String?
   lastLoginAt          DateTime?
+  /// IANA time zone, e.g. Africa/Lagos. Null until captured from the browser or set in Account.
+  timeZone             String?
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
 
@@ -72,6 +87,16 @@ model User {
   announcements      Announcement[]
   auditLogs          AuditLog[]
   applicationSubject Subject?         @relation("ApplicationSubject", fields: [applicationSubjectId], references: [id], onDelete: SetNull)
+
+  teacherProfile     TeacherProfile?
+  studentConnections TeacherConnection[] @relation("ConnectionStudent")
+  teacherConnections TeacherConnection[] @relation("ConnectionTeacher")
+  tutoringSessions   TutoringSession[]   @relation("SessionTeacher")
+  messages           Message[]
+  reviewsWritten     TeacherReview[]     @relation("ReviewStudent")
+  reviewsReceived    TeacherReview[]     @relation("ReviewTeacher")
+  savedTeachers      SavedTeacher[]      @relation("SavedBy")
+  savedBy            SavedTeacher[]      @relation("SavedTeacher")
 
   @@index([role, status])
 }
@@ -103,6 +128,7 @@ model Subject {
 
   courses    Course[]
   applicants User[]   @relation("ApplicationSubject")
+  topics     Topic[]
 }
 
 model Course {
@@ -281,4 +307,193 @@ model AuditLog {
   actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Choose your teacher: profiles, topics, availability, connections, sessions.
+// ---------------------------------------------------------------------------
+
+model TeacherProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  slug              String   @unique
+  headline          String   @default("")
+  about             String   @default("")
+  teachingStyle     String?
+  experienceYears   Int?
+  qualifications    String?
+  /// YouTube or Vimeo introduction video.
+  videoUrl          String?
+  /// The teacher's own Zoom/Meet/Teams link, shown only on confirmed sessions.
+  meetingUrl        String?
+  /// Availability windows are in this IANA time zone.
+  timeZone          String   @default("UTC")
+  sessionMinutes    Int      @default(60)
+  acceptingStudents Boolean  @default(true)
+  /// Set by an admin to remove the profile from the directory.
+  isHidden          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photo        ProfilePhoto?
+  topics       TeacherTopic[]
+  languages    TeacherLanguage[]
+  availability AvailabilityWindow[]
+
+  @@index([isHidden, acceptingStudents])
+}
+
+/// Kept apart from TeacherProfile so list queries never load image bytes.
+model ProfilePhoto {
+  profileId   String   @id
+  data        Bytes
+  contentType String
+  updatedAt   DateTime @updatedAt
+
+  profile TeacherProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
+model Topic {
+  id        String   @id @default(cuid())
+  subjectId String
+  name      String
+  slug      String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  subject     Subject             @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teachers    TeacherTopic[]
+  connections TeacherConnection[]
+
+  @@unique([subjectId, slug])
+  @@unique([subjectId, name])
+}
+
+model TeacherTopic {
+  profileId String
+  topicId   String
+
+  profile TeacherProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  topic   Topic          @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, topicId])
+  @@index([topicId])
+}
+
+model TeacherLanguage {
+  profileId String
+  language  String
+
+  profile TeacherProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, language])
+  @@index([language])
+}
+
+/// A weekly recurring window, in the teacher profile's time zone.
+model AvailabilityWindow {
+  id          String @id @default(cuid())
+  profileId   String
+  /// 0 = Sunday ... 6 = Saturday.
+  weekday     Int
+  /// Minutes after midnight, e.g. 1080 = 18:00.
+  startMinute Int
+  endMinute   Int
+
+  profile TeacherProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+model TeacherConnection {
+  id           String           @id @default(cuid())
+  studentId    String
+  teacherId    String
+  topicId      String?
+  status       ConnectionStatus @default(PENDING)
+  /// The student's introduction: what they want to learn and why.
+  goals        String
+  /// The teacher's note when declining.
+  responseNote String?
+  endedById    String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  respondedAt  DateTime?
+  endedAt      DateTime?
+
+  student  User              @relation("ConnectionStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  teacher  User              @relation("ConnectionTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  topic    Topic?            @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  sessions TutoringSession[]
+  messages Message[]
+
+  @@unique([studentId, teacherId])
+  @@index([teacherId, status])
+}
+
+model TutoringSession {
+  id            String         @id @default(cuid())
+  connectionId  String
+  /// Denormalised from the connection for fast conflict checks.
+  teacherId     String
+  startsAt      DateTime
+  endsAt        DateTime
+  status        TutoringStatus @default(CONFIRMED)
+  /// What the student wants to cover.
+  agenda        String?
+  cancelledById String?
+  cancelReason  String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  connection TeacherConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  teacher    User              @relation("SessionTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId, startsAt])
+  @@index([connectionId, startsAt])
+}
+
+model Message {
+  id           String    @id @default(cuid())
+  connectionId String
+  senderId     String
+  body         String
+  createdAt    DateTime  @default(now())
+  readAt       DateTime?
+
+  connection TeacherConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  sender     User              @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId, createdAt])
+}
+
+model TeacherReview {
+  id        String   @id @default(cuid())
+  teacherId String
+  studentId String
+  /// 1 to 5.
+  rating    Int
+  body      String
+  isHidden  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teacher User @relation("ReviewTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  student User @relation("ReviewStudent", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, studentId])
+  @@index([teacherId, isHidden])
+}
+
+model SavedTeacher {
+  studentId String
+  teacherId String
+  createdAt DateTime @default(now())
+
+  student User @relation("SavedBy", fields: [studentId], references: [id], onDelete: Cascade)
+  teacher User @relation("SavedTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@id([studentId, teacherId])
+  @@index([teacherId])
 }

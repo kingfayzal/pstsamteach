@@ -4,17 +4,27 @@ import { BookCover, Shelf } from "@/components/brand/book-cover";
 import { MarkedWorksheet } from "@/components/brand/marked-worksheet";
 import { LinkButton } from "@/components/ui/button";
 import { plural } from "@/lib/format";
+import { RatingSummary } from "@/components/teachers/rating";
+import { TeacherAvatar } from "@/components/teachers/teacher-avatar";
+import { getViewerTimeZone } from "@/server/auth/viewer";
 import { listActiveSubjects, listFeaturedCourses } from "@/server/queries/catalog";
+import { listDirectory } from "@/server/queries/teachers";
 
 const STEPS = [
-  { title: "Enrol in a course", body: "Pick a course in English, Mathematics or Nursing. Enrolment is free." },
-  { title: "Work through the lessons", body: "Short lessons with worked examples. Tick each one off as you finish it." },
+  { title: "Choose your teacher", body: "Read profiles, watch introductions and pick the teacher you connect with." },
+  { title: "Learn live and in between", body: "Book one-to-one sessions at times that suit you, and work through courses in between." },
   { title: "Practise and hand work in", body: "Quizzes are marked the moment you submit. Written assignments go to your teacher." },
   { title: "Get it back, marked", body: "See your score and your teacher's comments, then try again if you need to." },
 ];
 
 export default async function HomePage() {
-  const [subjects, featured] = await Promise.all([listActiveSubjects(), listFeaturedCourses(3)]);
+  const timeZone = await getViewerTimeZone();
+  const [subjects, featured, directory] = await Promise.all([
+    listActiveSubjects(),
+    listFeaturedCourses(3),
+    listDirectory({ accepting: true, saved: false, sort: "recommended" }, { timeZone }),
+  ]);
+  const teachers = directory.slice(0, 3);
 
   return (
     <>
@@ -28,12 +38,12 @@ export default async function HomePage() {
             Get it marked.
           </h1>
           <p className="max-w-[46ch] text-xl leading-relaxed text-ink-soft">
-            Courses in English, Mathematics and Nursing, taught by real teachers who read your work and mark it.
+            English, Mathematics and Nursing with a teacher you choose yourself: live one-to-one sessions, courses, and work that comes back marked.
           </p>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
-            <LinkButton href="/signup">Create a student account</LinkButton>
+            <LinkButton href="/teachers">Find your teacher</LinkButton>
             <Link href="/courses" className="text-base font-bold text-ink underline decoration-rule decoration-2 underline-offset-4 hover:decoration-ink">
-              Browse courses first
+              Browse courses
             </Link>
           </div>
         </div>
@@ -66,11 +76,42 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {teachers.length > 0 ? (
+        <section aria-labelledby="teachers-heading" className="mx-auto max-w-6xl px-4 pt-20 sm:px-8">
+          <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+            <div className="space-y-2">
+              <h2 id="teachers-heading" className="text-3xl text-ink">
+                Meet some of our teachers
+              </h2>
+              <p className="max-w-[56ch] text-lg text-ink-soft">Every teacher is approved by our team. Pick the one whose way of explaining clicks with you.</p>
+            </div>
+            <Link href="/teachers" className="text-base font-bold text-ink underline decoration-rule decoration-2 underline-offset-4 hover:decoration-ink">
+              See every teacher
+            </Link>
+          </div>
+          <ul className="grid grid-cols-1 gap-x-10 gap-y-10 md:grid-cols-3">
+            {teachers.map((t) => (
+              <li key={t.profileId} className="space-y-3">
+                <Link href={`/teachers/${t.slug}`} className="group flex items-center gap-4">
+                  <TeacherAvatar name={t.name} photo={t.photo} color={t.subjects[0]?.color} size="md" />
+                  <span>
+                    <span className="block text-lg font-extrabold text-ink group-hover:underline group-hover:decoration-rule group-hover:underline-offset-4">{t.name}</span>
+                    <span className="block text-sm text-muted">{t.subjects.map((s) => s.name).join(", ")}</span>
+                  </span>
+                </Link>
+                <p className="text-base font-bold text-ink-soft">{t.headline}</p>
+                <RatingSummary average={t.average} count={t.reviewCount} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section aria-labelledby="how-heading" className="mx-auto max-w-6xl px-4 py-20 sm:px-8">
         <h2 id="how-heading" className="text-3xl text-ink">
-          How a course works
+          How it works
         </h2>
-        <ol className="mt-10 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
+        <ol className="mt-10 grid grid-cols-1 gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((step, index) => (
             <li key={step.title} className="border-t-2 border-ink pt-4">
               <span className="hand text-2xl text-tick-text">{index + 1}.</span>

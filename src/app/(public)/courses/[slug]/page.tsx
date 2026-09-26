@@ -55,6 +55,8 @@ export default async function CoursePage(props: PageProps<"/courses/[slug]">) {
   if (!course) notFound();
   const minutes = course.lessons.reduce((sum, l) => sum + l.durationMinutes, 0);
   const quizzes = course.assessments.filter((a) => a.kind === "QUIZ").length;
+  const profile = course.teacher.teacherProfile;
+  const teacherProfile = profile && !profile.isHidden && profile.headline ? profile : null;
   const assignments = course.assessments.length - quizzes;
 
   return (
@@ -100,12 +102,17 @@ export default async function CoursePage(props: PageProps<"/courses/[slug]">) {
             ) : null}
           </section>
 
-          {course.teacher.bio ? (
+          {course.teacher.bio || teacherProfile ? (
             <section aria-labelledby="teacher-heading" className="mt-14 border-t border-rule pt-8">
               <h2 id="teacher-heading" className="text-2xl text-ink">
                 Your teacher, {course.teacher.name}
               </h2>
-              <p className="mt-3 max-w-[62ch] text-lg text-ink-soft">{course.teacher.bio}</p>
+              <p className="mt-3 max-w-[62ch] text-lg text-ink-soft">{teacherProfile?.headline || course.teacher.bio}</p>
+              {teacherProfile ? (
+                <Link href={`/teachers/${teacherProfile.slug}`} className="mt-3 inline-block text-base font-bold text-ink underline decoration-rule underline-offset-4 hover:decoration-ink">
+                  See {course.teacher.name.split(" ")[0]}&rsquo;s profile and book one-to-one sessions
+                </Link>
+              ) : null}
             </section>
           ) : null}
         </div>

@@ -32,3 +32,8 @@ export async function logOut(page: Page): Promise<void> {
 export function formAlert(page: Page) {
   return page.locator("main").getByRole("alert");
 }
+
+/** Pre-set the time-zone cookie TimeZoneSync would write, so the first render is already local. */
+export async function useLagosTime(page: Page): Promise<void> {
+  await page.context().addCookies([{ name: "st_tz", value: encodeURIComponent("Africa/Lagos"), url: "http://localhost:3100" }]);
+}

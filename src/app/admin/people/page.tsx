@@ -33,7 +33,7 @@ export default async function PeoplePage(props: PageProps<"/admin/people">) {
       {users.length === 0 ? (
         <EmptyState title="Nobody matches those filters" />
       ) : (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full min-w-[46rem] border-collapse text-left">
             <thead>
               <tr className="border-b-2 border-ink text-sm text-ink-soft">

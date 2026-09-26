@@ -19,7 +19,7 @@ export default async function CourseStudentsPage(props: PageProps<"/teach/course
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="relative overflow-x-auto">
       <table className="w-full min-w-[44rem] border-collapse text-left">
         <thead>
           <tr className="border-b-2 border-ink text-sm text-ink-soft">

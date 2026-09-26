@@ -6,20 +6,27 @@ import { LinkButton } from "@/components/ui/button";
 import { EmptyState, PageHeader, Section } from "@/components/ui/layout";
 import { CircledScore } from "@/components/ui/marks";
 import { Notice } from "@/components/ui/notice";
+import { UpcomingSessions } from "@/components/teachers/upcoming-sessions";
 import { formatDate, formatRelative } from "@/lib/format";
 import { requireRole } from "@/server/auth/session";
+import { getViewerTimeZone } from "@/server/auth/viewer";
+import { listStudentConnections, listUpcomingSessions } from "@/server/queries/connections";
 import { getRecentResults, getStudentAnnouncements, getStudentCourses } from "@/server/queries/student";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function StudentDashboard(props: PageProps<"/learn">) {
   const user = await requireRole("STUDENT");
-  const [{ notice }, courses, results, announcements] = await Promise.all([
+  const [{ notice }, courses, results, announcements, sessions, connections, timeZone] = await Promise.all([
     props.searchParams,
     getStudentCourses(user.id),
     getRecentResults(user.id),
     getStudentAnnouncements(user.id),
+    listUpcomingSessions(user.id, "STUDENT"),
+    listStudentConnections(user.id),
+    getViewerTimeZone(),
   ]);
+  const hasTeacher = connections.some((c) => c.status === "ACTIVE" || c.status === "PENDING");
   const inProgress = courses.filter((c) => !c.completedAt);
   const dueSoon = courses
     .flatMap((c) =>
@@ -37,6 +44,25 @@ export default async function StudentDashboard(props: PageProps<"/learn">) {
       <PageHeader title={`Welcome back, ${firstName}`} description={inProgress.length ? "Here's where you left off." : "Find a course and make a start."} />
 
       <div className="space-y-14">
+        <Section
+          title="Upcoming sessions"
+          actions={hasTeacher ? <Link href="/learn/teachers" className="text-base font-bold underline decoration-rule underline-offset-4">All your teachers</Link> : null}
+        >
+          {sessions.length ? (
+            <UpcomingSessions sessions={sessions} timeZone={timeZone} linkBase="/learn/teachers" />
+          ) : hasTeacher ? (
+            <p className="text-base text-muted">No sessions booked. Open a teacher to book your next one.</p>
+          ) : (
+            <div className="margin-sheet flex flex-col gap-4 border border-rule py-6 pr-6 pl-[4.5rem] sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-lg font-bold text-ink">Learn one to one with a teacher you choose</p>
+                <p className="max-w-[56ch] text-base text-ink-soft">Read profiles, watch introductions, and book live sessions at times that suit you.</p>
+              </div>
+              <LinkButton href="/teachers">Find a teacher</LinkButton>
+            </div>
+          )}
+        </Section>
+
         <Section title="Continue learning" actions={courses.length > inProgress.length ? <Link href="/learn/courses" className="text-base font-bold underline decoration-rule underline-offset-4">All my courses</Link> : null}>
           {inProgress.length === 0 ? (
             <EmptyState title={courses.length ? "You've finished everything you enrolled in" : "You haven't enrolled in a course yet"} action={<LinkButton href="/courses">Browse courses</LinkButton>}>
