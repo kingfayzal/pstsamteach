@@ -65,7 +65,7 @@ export default async function CoursePage(props: PageProps<"/courses/[slug]">) {
           { href: `/courses?subject=${course.subject.slug}`, label: course.subject.name },
         ]}
       />
-      <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0">
           <SubjectTag name={course.subject.name} color={course.subject.color} />
           <h1 className="mt-3 text-4xl text-ink">{course.title}</h1>

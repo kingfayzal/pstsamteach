@@ -49,7 +49,7 @@ export default async function StudentCoursePage(props: PageProps<"/learn/courses
         </p>
       </div>
 
-      <div className="grid gap-14 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="grid grid-cols-1 gap-14 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="space-y-14">
           <Section title="Lessons">
             <ol className="border-t border-rule">

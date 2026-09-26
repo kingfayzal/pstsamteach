@@ -40,7 +40,7 @@ export function QuizReview({ questions, attempt, passPercent }: Props) {
   const passed = toPercent(score, attempt.maxScore) >= passPercent;
 
   return (
-    <div className="space-y-10">
+    <div className="max-w-3xl space-y-10">
       <div className="flex flex-wrap items-center gap-6 border border-rule bg-sheet px-6 py-5">
         <CircledScore score={score} maxScore={attempt.maxScore} passPercent={passPercent} size="lg" />
         <div>

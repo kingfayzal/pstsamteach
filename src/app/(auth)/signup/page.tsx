@@ -14,7 +14,7 @@ export default async function SignupPage(props: PageProps<"/signup">) {
   const safeNext = safeNextPath(Array.isArray(next) ? next[0] : next) ?? undefined;
 
   return (
-    <div className="grid gap-16 lg:grid-cols-[28rem_1fr]">
+    <div className="grid grid-cols-1 gap-16 lg:grid-cols-[28rem_1fr]">
       <div>
         <h1 className="text-4xl text-ink">Create a student account</h1>
         <p className="mt-2 mb-8 text-lg text-ink-soft">Free to join. Enrol in as many courses as you like.</p>

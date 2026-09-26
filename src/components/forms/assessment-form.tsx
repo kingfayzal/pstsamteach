@@ -18,7 +18,7 @@ export function AssessmentForm({ action, assessment, defaultKind = "QUIZ", submi
   const kind = valueFrom(state, "kind", assessment?.kind ?? defaultKind);
   return (
     <form action={formAction} className="max-w-2xl space-y-6">
-      <div className="grid gap-6 sm:grid-cols-[1fr_12rem]">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-[1fr_12rem]">
         <TextField name="title" label="Title" defaultValue={assessment?.title} required state={state} />
         <SelectField
           name="kind"
@@ -40,7 +40,7 @@ export function AssessmentForm({ action, assessment, defaultKind = "QUIZ", submi
         required
         state={state}
       />
-      <div className="grid gap-6 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
         <TextField name="passPercent" type="number" inputMode="numeric" min={0} max={100} label="Pass mark (%)" defaultValue={assessment?.passPercent ?? 60} state={state} />
         <TextField
           name="maxPoints"

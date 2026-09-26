@@ -43,7 +43,7 @@ export default async function AdminOverviewPage() {
           </div>
         </Section>
 
-        <div className="grid gap-14 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-14 lg:grid-cols-2">
           <Section title="Courses waiting for review" actions={<Link href="/admin/review" className="text-base font-bold underline decoration-rule underline-offset-4">Review queue</Link>}>
             {reviewQueue.length === 0 ? (
               <p className="text-base text-muted">Nothing to review.</p>

@@ -45,18 +45,14 @@ export async function updateCourseAction(courseId: string, _prev: FormState, for
   return successState("Course details saved.");
 }
 
-const TEACHER_ACTION_DONE: Partial<Record<CourseAction, string>> = {
-  submit: "Submitted for review. An admin will check it and publish it or send notes back.",
-  withdraw: "Withdrawn from review. You can edit it again.",
-};
-
 export async function teacherCourseStatusAction(courseId: string, action: CourseAction, _prev: FormState): Promise<FormState> {
   const user = await requireUser();
   if (action !== "submit" && action !== "withdraw") return { ok: false, message: "That action isn't available here." };
   const result = await changeCourseStatus(user, courseId, action);
   if (!result.ok) return errorState(result);
   refreshCourse(courseId);
-  return successState(TEACHER_ACTION_DONE[action] ?? "Updated.");
+  // The button that was pressed disappears with the new status, so confirm on the page instead.
+  redirect(`${coursePath(courseId)}?notice=${action === "submit" ? "course-submitted" : "course-withdrawn"}`);
 }
 
 // Lessons -------------------------------------------------------------------

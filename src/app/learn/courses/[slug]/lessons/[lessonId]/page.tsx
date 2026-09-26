@@ -24,7 +24,7 @@ export default async function LessonPage(props: PageProps<"/learn/courses/[slug]
   const base = `/learn/courses/${course.slug}`;
 
   return (
-    <div className="grid gap-12 xl:grid-cols-[minmax(0,1fr)_15rem]" style={{ "--subject": course.subject.color } as CSSProperties}>
+    <div className="grid grid-cols-1 gap-12 xl:grid-cols-[minmax(0,1fr)_15rem]" style={{ "--subject": course.subject.color } as CSSProperties}>
       <article className="min-w-0">
         <Breadcrumbs items={[{ href: "/learn/courses", label: "My courses" }, { href: base, label: course.title }]} />
         <p className="text-sm text-muted">

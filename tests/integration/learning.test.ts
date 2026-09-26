@@ -94,6 +94,20 @@ describe("submitQuiz", () => {
   });
 });
 
+describe("archived courses", () => {
+  it("keep lessons readable but stop new submissions", async () => {
+    const { course } = await publishedCourse(1);
+    const quiz = await makeAssessment(course.id);
+    const student = await makeStudent();
+    await enroll(student.id, course.id);
+    await db.course.update({ where: { id: course.id }, data: { status: "ARCHIVED" } });
+
+    expect((await setLessonComplete(student, course.lessons[0].id, true)).ok).toBe(true);
+    const answers = Object.fromEntries(quiz.questions.map((q) => [q.id, q.options[0].id]));
+    expect(await submitQuiz(student, quiz.id, answers)).toMatchObject({ ok: false, code: "CONFLICT" });
+  });
+});
+
 describe("assignments and marking", () => {
   it("lets a student submit and revise until the teacher marks it", async () => {
     const { teacher, course } = await publishedCourse(0);

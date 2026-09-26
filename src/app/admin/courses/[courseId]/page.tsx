@@ -6,6 +6,7 @@ import { VideoEmbed } from "@/components/course/video-embed";
 import { ReviewNoteForm } from "@/components/forms/simple-forms";
 import { ActionButton } from "@/components/ui/action-button";
 import { CourseStatusBadge, Pill, SubjectTag } from "@/components/ui/badges";
+import { Notice } from "@/components/ui/notice";
 import { PageHeader, Section } from "@/components/ui/layout";
 import { availableActions } from "@/lib/course-lifecycle";
 import { formatDate, formatMinutes, plural } from "@/lib/format";
@@ -18,13 +19,14 @@ export const metadata: Metadata = { title: "Review course" };
 
 export default async function AdminCoursePage(props: PageProps<"/admin/courses/[courseId]">) {
   const admin = await requireRole("ADMIN");
-  const { courseId } = await props.params;
+  const [{ courseId }, { notice }] = await Promise.all([props.params, props.searchParams]);
   const course = await getCourseForReview(courseId);
   if (!course) notFound();
   const actions = availableActions(course.status, admin.role);
 
   return (
     <>
+      <Notice value={notice} />
       <PageHeader
         crumbs={[{ href: "/admin/courses", label: "Courses" }]}
         title={course.title}
@@ -45,7 +47,7 @@ export default async function AdminCoursePage(props: PageProps<"/admin/courses/[
         }
       />
 
-      <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 space-y-14">
           <Section title="Description">
             <Markdown>{course.description}</Markdown>

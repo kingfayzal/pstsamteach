@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ActionButton } from "@/components/ui/action-button";
 import { SubjectTag } from "@/components/ui/badges";
 import { EmptyState, PageHeader, Section } from "@/components/ui/layout";
+import { Notice } from "@/components/ui/notice";
 import { formatRelative, plural } from "@/lib/format";
 import { approveTeacherAction, declineTeacherAction } from "@/server/actions/admin";
 import { requireRole } from "@/server/auth/session";
@@ -10,12 +11,13 @@ import { getReviewQueue } from "@/server/queries/admin";
 
 export const metadata: Metadata = { title: "Review queue" };
 
-export default async function ReviewQueuePage() {
+export default async function ReviewQueuePage(props: PageProps<"/admin/review">) {
   await requireRole("ADMIN");
-  const { courses, applicants } = await getReviewQueue();
+  const [{ notice }, { courses, applicants }] = await Promise.all([props.searchParams, getReviewQueue()]);
 
   return (
     <>
+      <Notice value={notice} />
       <PageHeader title="Review queue" description="Courses waiting to go live, and people who want to teach. Oldest first." />
       <div className="space-y-14">
         <Section title={`Courses (${courses.length})`}>

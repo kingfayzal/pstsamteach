@@ -7,3 +7,14 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# Project conventions
+
+Read `docs/PLAN.md` (architecture, lifecycle) and `docs/DESIGN.md` (visual system) before changing things.
+
+- **Layers:** `lib/` is pure and unit-tested. `server/services/` takes `(actor, input)`, validates with Zod and enforces authorization itself. `server/queries/` are authorization-aware read models. `server/actions/` stay thin: session, then service, then revalidate/redirect.
+- **Never trust the UI for access control.** New service functions check role, status and ownership, and return "not found" for things the actor can't manage.
+- **Tests first for logic.** Add unit tests in `tests/unit`, integration tests against SQLite in `tests/integration`, and E2E specs in `e2e/` for user-visible flows. Keep coverage above the thresholds in `vitest.config.mts`.
+- **Design:** use the tokens in `globals.css`. Handwriting (`.hand`, Kalam) is only for a teacher's marks and feedback. Subject colour is information, never decoration. No all-caps labels, no arrow glyphs on buttons.
+- **Secrets:** never commit credentials. Demo and E2E passwords come from the environment or are generated at runtime.
+- **Commits:** conventional commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).

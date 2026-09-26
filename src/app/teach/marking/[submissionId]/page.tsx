@@ -23,7 +23,7 @@ export default async function MarkSubmissionPage(props: PageProps<"/teach/markin
         title={`${submission.student.name}: ${submission.assessment.title}`}
         description={`${submission.assessment.course.title}. Handed in ${formatDateTime(submission.submittedAt)}.`}
       />
-      <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-10">
           <details className="border border-rule bg-sheet px-5 py-4">
             <summary className="cursor-pointer text-base font-bold text-ink">The task you set</summary>

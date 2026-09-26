@@ -23,11 +23,14 @@ async function loadOpenAssessment(actor: Actor, assessmentId: string) {
   if (!isActiveRole(actor, "STUDENT")) return forbidden("Only student accounts can submit work.");
   const assessment = await db.assessment.findFirst({
     where: { id: assessmentId, isPublished: true },
-    select: { id: true, courseId: true, kind: true, maxPoints: true, passPercent: true, title: true },
+    select: { id: true, courseId: true, kind: true, maxPoints: true, passPercent: true, title: true, course: { select: { status: true } } },
   });
   if (!assessment) return notFound("That assessment");
   if (!(await findActiveEnrollment(actor.id, assessment.courseId))) {
     return fail("FORBIDDEN", "Enrol in this course to submit work.");
+  }
+  if (assessment.course.status !== "PUBLISHED") {
+    return fail("CONFLICT", "This course is archived, so it isn't taking new work.");
   }
   return ok(assessment);
 }

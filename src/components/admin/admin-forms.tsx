@@ -42,7 +42,7 @@ export function SubjectForm({ action, subject, idPrefix, submitLabel }: { action
   const [state, formAction] = useActionState(action, undefined);
   return (
     <form action={formAction} className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-[1fr_10rem]">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_10rem]">
         <TextField name="name" id={`${idPrefix}-name`} label="Name" defaultValue={subject?.name} required state={state} />
         <TextField name="color" id={`${idPrefix}-color`} label="Colour (hex)" defaultValue={subject?.color ?? "#"} placeholder="#2356C2" required state={state} />
       </div>

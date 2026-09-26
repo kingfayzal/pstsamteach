@@ -100,7 +100,7 @@ export default async function HomePage() {
       ) : null}
 
       <section aria-labelledby="teach-heading" className="mx-auto mt-16 max-w-6xl px-4 sm:px-8">
-        <div className="ruled grid gap-6 border border-rule px-6 py-10 pl-[4.5rem] sm:grid-cols-[1fr_auto] sm:items-center sm:pr-10">
+        <div className="margin-sheet grid gap-6 border border-rule px-6 py-10 pl-[4.5rem] sm:grid-cols-[1fr_auto] sm:items-center sm:pr-10">
           <div className="space-y-2">
             <h2 id="teach-heading" className="text-2xl text-ink">
               Teach what you know

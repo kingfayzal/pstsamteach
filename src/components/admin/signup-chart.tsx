@@ -28,6 +28,10 @@ export function SignupChart({ data }: { data: DailyCount[] }) {
   const plotH = HEIGHT - TOP_PAD;
   const current = active === null ? null : data[active];
 
+  if (data.every((d) => d.students === 0)) {
+    return <p className="py-6 text-base text-muted">No new student accounts in this period. Sign-ups will chart here day by day.</p>;
+  }
+
   return (
     <figure className="space-y-3">
       <div className="relative" onPointerLeave={() => setActive(null)}>

@@ -13,7 +13,7 @@ export default async function ApplyPage() {
   const subjects = await listActiveSubjects();
 
   return (
-    <div className="grid gap-16 lg:grid-cols-[32rem_1fr]">
+    <div className="grid grid-cols-1 gap-16 lg:grid-cols-[32rem_1fr]">
       <div>
         <h1 className="text-4xl text-ink">Apply to teach</h1>
         <p className="mt-2 mb-8 text-lg text-ink-soft">

@@ -17,7 +17,7 @@ export default async function ActivityPage(props: PageProps<"/admin/activity">) 
       <PageHeader title="Activity log" description="Every approval, publication, suspension and mark, newest first. Entries can't be edited." />
       <ul className="divide-y divide-rule border-y border-rule">
         {log.entries.map((entry) => (
-          <li key={entry.id} className="grid gap-1 py-3 sm:grid-cols-[11rem_1fr_auto] sm:gap-4">
+          <li key={entry.id} className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-[11rem_1fr_auto] sm:gap-4">
             <span className="figures text-sm text-muted">{formatDateTime(entry.createdAt)}</span>
             <span className="text-base text-ink">{entry.summary}</span>
             <span className="text-sm text-ink-soft">{entry.actor?.name ?? "System"}</span>

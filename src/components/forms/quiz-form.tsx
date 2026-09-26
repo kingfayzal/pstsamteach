@@ -16,7 +16,7 @@ type Props = {
 export function QuizForm({ questions, action }: Props) {
   const [state, formAction] = useActionState(action, undefined);
   return (
-    <form action={formAction} className="space-y-10">
+    <form action={formAction} className="max-w-3xl space-y-10">
       <FormMessage state={state} />
       <ol className="space-y-10">
         {questions.map((question, index) => (

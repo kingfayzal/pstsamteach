@@ -15,17 +15,11 @@ export function BookCover({ course, href }: { course: CourseCard; href?: string 
       <Link href={link} className="block rounded-book focus-visible:outline-offset-4" aria-label={`${course.title}, ${course.subject.name}`}>
         <div className="relative flex aspect-[5/6] flex-col rounded-book bg-(--subject) p-4 pl-7 shadow-book">
           <p className="text-base font-extrabold tracking-[-0.01em] text-white/90">{course.subject.name}</p>
-          <div className="mt-auto rounded-[2px] bg-sheet px-3 pt-2 pb-3 shadow-[0_1px_0_rgb(0_0_0/0.12)]">
-            <div className="flex items-baseline gap-2 border-b border-rule pb-1">
-              <span className="shrink-0 text-xs text-muted">Course</span>
-              <span className="line-clamp-2 text-base leading-snug font-extrabold text-ink group-hover:underline group-hover:decoration-rule group-hover:underline-offset-4">
-                {course.title}
-              </span>
-            </div>
-            <div className="flex items-baseline gap-2 border-b border-rule pt-1.5 pb-1">
-              <span className="shrink-0 text-xs text-muted">Teacher</span>
-              <span className="truncate text-sm font-bold text-ink-soft">{course.teacher.name}</span>
-            </div>
+          <div className="mt-auto rounded-[2px] bg-sheet px-3 pt-2.5 pb-3 shadow-[0_1px_0_rgb(0_0_0/0.12)]">
+            <p className="line-clamp-3 border-b border-rule pb-1 text-base leading-snug font-extrabold text-ink group-hover:underline group-hover:decoration-rule group-hover:underline-offset-4">
+              {course.title}
+            </p>
+            <p className="truncate border-b border-rule pt-1.5 pb-1 text-sm font-bold text-ink-soft">{course.teacher.name}</p>
           </div>
         </div>
       </Link>
@@ -40,5 +34,5 @@ export function BookCover({ course, href }: { course: CourseCard; href?: string 
 }
 
 export function Shelf({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-1 gap-x-6 gap-y-10 min-[480px]:grid-cols-2 lg:grid-cols-3">{children}</div>;
+  return <div className="grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">{children}</div>;
 }

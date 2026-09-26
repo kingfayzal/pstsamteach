@@ -11,6 +11,15 @@ export const NOTICES = {
   "assessment-created": "Created. Add questions or instructions, then publish it when it's ready.",
   "assessment-deleted": "Deleted.",
   marked: "Marked. The student can see their score and feedback now.",
+  "course-submitted": "Submitted for review. An admin will check it and publish it or send notes back.",
+  "course-withdrawn": "Withdrawn from review. You can edit it again.",
+  "course-approved": "Approved and published. It's in the catalog now.",
+  "course-rejected": "Sent back to the teacher with your notes.",
+  "course-unpublished": "Unpublished. It's back in draft and out of the catalog.",
+  "course-archived": "Archived. Enrolled students keep access; nobody new can enrol.",
+  "course-restored": "Restored to the catalog.",
+  "teacher-approved": "Approved. They can create courses now.",
+  "teacher-declined": "Declined. Their account now works as a student account.",
 } as const;
 
 export type NoticeKey = keyof typeof NOTICES;

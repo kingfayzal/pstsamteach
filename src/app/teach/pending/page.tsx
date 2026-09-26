@@ -17,7 +17,7 @@ export default async function PendingPage() {
     <>
       <PageHeader title="Your application is with our team" description="You'll be able to create courses as soon as an admin approves it. There's nothing else you need to do." />
       <div className="max-w-2xl space-y-8">
-        <dl className="grid gap-4 sm:grid-cols-2">
+        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <dt className="text-sm text-muted">Subject</dt>
             <dd className="text-lg font-bold text-ink">{application.applicationSubject?.name ?? "Not given"}</dd>

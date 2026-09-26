@@ -111,6 +111,12 @@
       repeating-linear-gradient(to bottom, transparent 0, transparent calc(2rem - 1px), var(--color-rule) calc(2rem - 1px), var(--color-rule) 2rem);
   }
 
+  /* Paper with only the margin line, for prose that would fight the rules. */
+  .margin-sheet {
+    background-color: var(--color-sheet);
+    background-image: linear-gradient(to right, transparent 3.25rem, var(--color-margin) 3.25rem, var(--color-margin) calc(3.25rem + 1.5px), transparent calc(3.25rem + 1.5px));
+  }
+
   /* Tabular figures wherever numbers line up: scores, counts, dosages. */
   .figures {
     font-variant-numeric: tabular-nums;

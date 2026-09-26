@@ -17,7 +17,7 @@ export function LessonForm({ action, lesson, submitLabel }: Props) {
   return (
     <form action={formAction} className="space-y-6">
       <TextField name="title" label="Lesson title" defaultValue={lesson?.title} required state={state} />
-      <div className="grid gap-6 sm:grid-cols-[10rem_1fr]">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-[10rem_1fr]">
         <TextField
           name="durationMinutes"
           type="number"

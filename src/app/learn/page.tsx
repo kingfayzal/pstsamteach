@@ -51,7 +51,7 @@ export default async function StudentDashboard(props: PageProps<"/learn">) {
           )}
         </Section>
 
-        <div className="grid gap-14 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-14 lg:grid-cols-2">
           <Section title="Due soon">
             {dueSoon.length === 0 ? (
               <p className="text-base text-muted">Nothing due. Deadlines for assignments appear here.</p>

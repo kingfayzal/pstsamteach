@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import type { CourseAction } from "@/lib/course-lifecycle";
 import { formDataToObject, type FormState } from "@/lib/validation/form";
 import { requireRole } from "@/server/auth/session";
@@ -27,7 +28,7 @@ export async function approveTeacherAction(userId: string, _prev: FormState): Pr
   const result = await approveTeacher(admin, userId);
   if (!result.ok) return errorState(result);
   refreshAdmin();
-  return successState("Approved. They can create courses now.");
+  redirect("/admin/review?notice=teacher-approved");
 }
 
 export async function declineTeacherAction(userId: string, _prev: FormState): Promise<FormState> {
@@ -35,7 +36,7 @@ export async function declineTeacherAction(userId: string, _prev: FormState): Pr
   const result = await declineTeacher(admin, userId);
   if (!result.ok) return errorState(result);
   refreshAdmin();
-  return successState("Declined. Their account now works as a student account.");
+  redirect("/admin/review?notice=teacher-declined");
 }
 
 export async function suspendUserAction(userId: string, _prev: FormState): Promise<FormState> {
@@ -62,12 +63,14 @@ export async function changeRoleAction(userId: string, _prev: FormState, form: F
   return successState("Role changed. They'll need to sign in again.");
 }
 
-const ADMIN_ACTION_DONE: Partial<Record<CourseAction, string>> = {
-  approve: "Approved and published. It's in the catalog now.",
-  reject: "Sent back to the teacher with your notes.",
-  unpublish: "Unpublished. It's back in draft and out of the catalog.",
-  archive: "Archived. Enrolled students keep access; nobody new can enrol.",
-  restore: "Restored to the catalog.",
+const ADMIN_NOTICE: Record<CourseAction, string> = {
+  submit: "course-submitted",
+  withdraw: "course-withdrawn",
+  approve: "course-approved",
+  reject: "course-rejected",
+  unpublish: "course-unpublished",
+  archive: "course-archived",
+  restore: "course-restored",
 };
 
 export async function adminCourseStatusAction(courseId: string, action: CourseAction, _prev: FormState, form: FormData): Promise<FormState> {
@@ -77,7 +80,7 @@ export async function adminCourseStatusAction(courseId: string, action: CourseAc
   refreshAdmin();
   revalidatePath("/courses", "layout");
   revalidatePath("/");
-  return successState(ADMIN_ACTION_DONE[action] ?? "Updated.");
+  redirect(`/admin/courses/${courseId}?notice=${ADMIN_NOTICE[action]}`);
 }
 
 export async function featureCourseAction(courseId: string, featured: boolean, _prev: FormState): Promise<FormState> {

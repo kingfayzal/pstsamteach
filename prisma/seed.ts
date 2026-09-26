@@ -190,6 +190,18 @@ async function main() {
     },
   });
 
+  // Recent sign-ups, so the admin chart has a realistic fortnight.
+  const RECENT_STUDENTS: Array<[string, number]> = [
+    ["Chidi Nwosu", 13], ["Funmi Adebayo", 11], ["Ibrahim Musa", 9], ["Zainab Bello", 9],
+    ["Emeka Obi", 6], ["Halima Yusuf", 4], ["Ngozi Eze", 2], ["Tobi Lawal", 1],
+  ];
+  const recentIds: string[] = [];
+  for (const [name, days] of RECENT_STUDENTS) {
+    const email = `${name.split(" ")[0].toLowerCase()}@example.com`;
+    const created = await db.user.create({ data: { name, email, passwordHash, role: "STUDENT", status: "ACTIVE", createdAt: daysAgo(days) } });
+    recentIds.push(created.id);
+  }
+
   const courses: Record<string, CreatedCourse> = {};
   for (const course of [grammar, persuasiveEssay, algebra, fractions, dosage, infection]) {
     courses[course.key] = await createCourse(course, subjectIds, ids);
@@ -256,6 +268,11 @@ async function main() {
     },
   });
 
+  const openCourses = ["algebra", "dosage", "grammar", "fractions"];
+  for (const [i, id] of recentIds.entries()) {
+    await db.enrollment.create({ data: { userId: id, courseId: courses[openCourses[i % openCourses.length]].id, createdAt: daysAgo(RECENT_STUDENTS[i][1]) } });
+  }
+
   // Announcements.
   await db.announcement.create({
     data: {
@@ -294,6 +311,7 @@ async function main() {
   for (const person of [...Object.values(PEOPLE), { name: applicant.name, email: applicant.email, role: "TEACHER (pending)" }]) {
     console.log(`  ${person.role.padEnd(18)} ${person.email}`);
   }
+  console.log(`  plus ${RECENT_STUDENTS.length} recently joined students (firstname@example.com)`);
   if (process.env.SEED_DEMO_PASSWORD) {
     console.log("Password: the value of SEED_DEMO_PASSWORD.\n");
   } else {

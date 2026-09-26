@@ -38,7 +38,7 @@ export default async function PersonPage(props: PageProps<"/admin/people/[userId
         }
       />
 
-      <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="space-y-12">
           {person.role === "TEACHER" && person.status === "PENDING" ? (
             <Section title="Teacher application">

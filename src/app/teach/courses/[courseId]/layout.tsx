@@ -41,7 +41,7 @@ export default async function CourseEditorLayout({ children, params }: LayoutPro
             {course.status === "ARCHIVED" && "Archived. Enrolled students keep access, but nobody new can enrol. Ask an admin to restore it."}
           </p>
           <div className="flex shrink-0 gap-3">
-            {actions.includes("submit") ? (
+            {actions.includes("submit") && blockers.length === 0 ? (
               <ActionButton action={teacherCourseStatusAction.bind(null, course.id, "submit")} label="Submit for review" pendingLabel="Submitting…" variant="primary" />
             ) : null}
             {actions.includes("withdraw") ? (
