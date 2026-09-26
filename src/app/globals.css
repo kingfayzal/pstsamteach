@@ -1,0 +1,248 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — see docs/DESIGN.md.
+ * Ink on exercise-book paper; marking-pen green is the only accent.
+ * Subject colours come from the database and arrive as --subject.
+ */
+@theme {
+  --color-paper: #f5f8fc;
+  --color-sheet: #ffffff;
+  --color-ink: #15213f;
+  --color-ink-deep: #0d1730;
+  --color-ink-soft: #3a4766;
+  --color-muted: #5b6784;
+  --color-rule: #c8d5ea;
+  --color-rule-soft: #e3eaf5;
+  --color-margin: #e79aa6;
+  --color-tick: #1d8f55;
+  --color-tick-text: #177a48;
+  --color-tick-wash: #e6f4ec;
+  --color-danger: #b42318;
+  --color-danger-wash: #fdecea;
+  --color-amber: #9a5b00;
+  --color-amber-wash: #fdf3e1;
+  --color-focus: #2356c2;
+  --color-english: #b3374a;
+  --color-maths: #2356c2;
+  --color-nursing: #0a7684;
+
+  --font-sans: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
+  --font-hand: var(--font-kalam), "Segoe Print", cursive;
+
+  /* Classical scale (Bringhurst), body nudged to 17px for screen reading. */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.4;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 1.0625rem;
+  --text-base--line-height: 1.6;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.55;
+  --text-xl: 1.3125rem;
+  --text-xl--line-height: 1.35;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 1.25;
+  --text-3xl: 2.25rem;
+  --text-3xl--line-height: 1.1;
+  --text-4xl: 3rem;
+  --text-4xl--line-height: 1.02;
+  --text-5xl: 4.5rem;
+  --text-5xl--line-height: 0.95;
+
+  --radius-control: 6px;
+  --radius-book: 3px;
+
+  --shadow-lift: 0 1px 0 rgb(21 33 63 / 0.06), 0 14px 28px -18px rgb(21 33 63 / 0.55);
+  --shadow-book: inset 7px 0 0 rgb(0 0 0 / 0.16), inset 8px 0 0 rgb(255 255 255 / 0.12), 0 1px 0 rgb(21 33 63 / 0.08),
+    0 10px 20px -14px rgb(21 33 63 / 0.6);
+}
+
+@layer base {
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    font-feature-settings: "tnum" 0;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: #d7e3fb;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+}
+
+@layer components {
+  /* Exercise-book paper: blue rules and a pink margin line. */
+  .ruled {
+    background-color: var(--color-sheet);
+    background-image:
+      linear-gradient(to right, transparent 3.25rem, var(--color-margin) 3.25rem, var(--color-margin) calc(3.25rem + 1.5px), transparent calc(3.25rem + 1.5px)),
+      repeating-linear-gradient(to bottom, transparent 0, transparent calc(2rem - 1px), var(--color-rule) calc(2rem - 1px), var(--color-rule) 2rem);
+  }
+
+  /* Tabular figures wherever numbers line up: scores, counts, dosages. */
+  .figures {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hand {
+    font-family: var(--font-hand);
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  /* One orchestrated moment: pen marks drawing in on the hero worksheet. */
+  .pen-draw {
+    stroke-dasharray: var(--len, 200);
+    stroke-dashoffset: var(--len, 200);
+    animation: pen-draw 0.55s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+    animation-delay: var(--delay, 0s);
+  }
+
+  .pen-write {
+    opacity: 0;
+    animation: pen-write 0.35s ease-out forwards;
+    animation-delay: var(--delay, 0s);
+  }
+
+  @keyframes pen-draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes pen-write {
+    to {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pen-draw,
+    .pen-write {
+      animation: none;
+      stroke-dashoffset: 0;
+      opacity: 1;
+    }
+  }
+}
+
+/* Lesson content rendered from Markdown. */
+.prose-lesson {
+  max-width: 68ch;
+  font-size: var(--text-lg);
+  line-height: 1.7;
+}
+
+.prose-lesson > * + * {
+  margin-top: 1em;
+}
+
+.prose-lesson h2 {
+  font-size: var(--text-2xl);
+  margin-top: 1.8em;
+}
+
+.prose-lesson h3 {
+  font-size: var(--text-xl);
+  margin-top: 1.5em;
+}
+
+.prose-lesson ul,
+.prose-lesson ol {
+  padding-left: 1.4em;
+}
+
+.prose-lesson ul {
+  list-style: disc;
+}
+
+.prose-lesson ol {
+  list-style: decimal;
+}
+
+.prose-lesson li + li {
+  margin-top: 0.35em;
+}
+
+.prose-lesson li::marker {
+  color: var(--color-muted);
+}
+
+.prose-lesson a {
+  color: var(--color-maths);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.prose-lesson strong {
+  font-weight: 800;
+}
+
+.prose-lesson blockquote {
+  border-left: 3px solid var(--color-margin);
+  padding-left: 1em;
+  color: var(--color-ink-soft);
+}
+
+.prose-lesson code {
+  font-size: 0.92em;
+  background: var(--color-rule-soft);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
+.prose-lesson table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-base);
+  font-variant-numeric: tabular-nums;
+}
+
+.prose-lesson th,
+.prose-lesson td {
+  border-bottom: 1px solid var(--color-rule);
+  padding: 0.5em 0.75em 0.5em 0;
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose-lesson th {
+  font-weight: 700;
+}
+
+.prose-lesson hr {
+  border: 0;
+  border-top: 1px solid var(--color-rule);
+}

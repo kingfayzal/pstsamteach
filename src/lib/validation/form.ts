@@ -8,6 +8,8 @@ export type FormState =
       ok?: boolean;
       message?: string;
       errors?: FieldErrors;
+      /** Submitted values, echoed back so fields keep their input when React resets the form. */
+      values?: Record<string, string | string[]>;
     }
   | undefined;
 
