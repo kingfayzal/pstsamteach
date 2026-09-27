@@ -19,7 +19,8 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "src/generated/**",
-    ".next-e2e/**",
+    // Extra build folders (NEXT_DIST_DIR), e.g. .next-e2e.
+    ".next-*/**",
     "test-results/**",
     "coverage/**",
     "playwright-report/**",

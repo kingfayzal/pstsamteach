@@ -154,7 +154,7 @@ export async function listDirectory(filters: DirectoryFilters, viewer: Viewer, n
       ...(filters.accepting ? { acceptingStudents: true } : {}),
       ...(filters.language ? { languages: { some: { language: filters.language } } } : {}),
       ...topicFilter,
-      ...(filters.q ? { OR: [{ headline: { contains: filters.q } }, { about: { contains: filters.q } }, { user: { name: { contains: filters.q } } }] } : {}),
+      ...(filters.q ? { OR: [{ headline: { contains: filters.q, mode: "insensitive" } }, { about: { contains: filters.q, mode: "insensitive" } }, { user: { name: { contains: filters.q, mode: "insensitive" } } }] } : {}),
     },
     select: profileSelect,
     take: 300,

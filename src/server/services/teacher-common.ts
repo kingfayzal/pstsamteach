@@ -70,3 +70,14 @@ export function profileIsListed(profile: SchedulingProfile): boolean {
 export async function loadSchedulingProfile(client: Db | Tx, teacherId: string) {
   return client.teacherProfile.findUnique({ where: { userId: teacherId }, select: schedulingProfileSelect });
 }
+
+/**
+ * Serialise scheduling for these people until the transaction ends, using
+ * Postgres advisory locks, so two bookings can't take the same slot at once.
+ * Locks are taken in a fixed order to avoid deadlocks.
+ */
+export async function lockSchedules(tx: Tx, userIds: readonly string[]): Promise<void> {
+  for (const id of [...new Set(userIds)].sort()) {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`schedule:${id}`}))`;
+  }
+}

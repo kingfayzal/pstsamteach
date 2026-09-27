@@ -8,9 +8,8 @@
  */
 import "dotenv/config";
 import { randomBytes } from "node:crypto";
-import { PrismaLibSql } from "@prisma/adapter-libsql";
-import { PrismaClient } from "../src/generated/prisma/client";
 import { slugify } from "../src/lib/slug";
+import { createPrismaClient } from "../src/server/db-client";
 import { hashPassword } from "../src/server/auth/password-core";
 import { grammar, persuasiveEssay } from "./seed-content/english";
 import { algebra, fractions } from "./seed-content/maths";
@@ -20,11 +19,12 @@ import type { SeedCourse } from "./seed-content/types";
 
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL is not set.");
-if (!url.startsWith("file:") && process.env.SEED_ALLOW_REMOTE !== "1") {
-  throw new Error("Refusing to wipe a remote database. Set SEED_ALLOW_REMOTE=1 if you really mean it.");
+const isLocal = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(new URL(url).hostname);
+if (!isLocal && process.env.SEED_ALLOW_REMOTE !== "1") {
+  throw new Error("Refusing to wipe a remote database. Demo data is for local development. Set SEED_ALLOW_REMOTE=1 if you really mean it.");
 }
 
-const db = new PrismaClient({ adapter: new PrismaLibSql({ url, authToken: process.env.DATABASE_AUTH_TOKEN || undefined }) });
+const db = createPrismaClient(url);
 const DAY = 24 * 60 * 60 * 1000;
 const daysAgo = (n: number) => new Date(Date.now() - n * DAY);
 
@@ -70,6 +70,7 @@ async function wipe() {
   await db.session.deleteMany();
   await db.user.deleteMany();
   await db.subject.deleteMany();
+  await db.rateLimit.deleteMany();
 }
 
 async function createCourse(course: SeedCourse, subjectIds: Record<string, string>, teacherIds: Record<string, string>) {

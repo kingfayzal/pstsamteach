@@ -219,6 +219,37 @@ describe("choosing a teacher", () => {
     expect((await requestTeacher(second, teacher.id, { goals: GOALS, slotStart: MONDAY_6PM }, NOW)).ok).toBe(true);
   });
 
+  it("gives a slot to exactly one student when several request it at once", async () => {
+    const { teacher } = await listedTeacher();
+    const students = await Promise.all(Array.from({ length: 4 }, () => makeStudent()));
+    const results = await Promise.all(students.map((student) => requestTeacher(student, teacher.id, { goals: GOALS, slotStart: MONDAY_5PM }, NOW)));
+    expect(results.filter((result) => result.ok)).toHaveLength(1);
+    expect(results.every((result) => result.ok || result.code === "CONFLICT")).toBe(true);
+    expect(await db.tutoringSession.count({ where: { teacherId: teacher.id, status: { not: "CANCELLED" } } })).toBe(1);
+  });
+
+  it("treats a double-submitted request as one", async () => {
+    const { teacher } = await listedTeacher();
+    const student = await makeStudent();
+    const results = await Promise.all([requestTeacher(student, teacher.id, { goals: GOALS }, NOW), requestTeacher(student, teacher.id, { goals: GOALS }, NOW)]);
+    expect(results.every((result) => result.ok)).toBe(true);
+    expect(await db.teacherConnection.count({ where: { studentId: student.id } })).toBe(1);
+  });
+
+  it("applies a double-submitted acceptance once and keeps the session", async () => {
+    const { teacher } = await listedTeacher();
+    const student = await makeStudent();
+    const request = await requestTeacher(student, teacher.id, { goals: GOALS, slotStart: MONDAY_5PM }, NOW);
+    if (!request.ok) throw new Error(request.message);
+    const replies = await Promise.all([
+      respondToRequest(teacher, request.data.connectionId, true, {}, NOW),
+      respondToRequest(teacher, request.data.connectionId, true, {}, NOW),
+    ]);
+    expect(replies.filter((reply) => reply.ok)).toHaveLength(1);
+    expect(replies.find((reply) => !reply.ok)).toMatchObject({ code: "CONFLICT" });
+    expect(await db.tutoringSession.findFirstOrThrow({ where: { connectionId: request.data.connectionId } })).toMatchObject({ status: "CONFIRMED" });
+  });
+
   it("caps how many requests a student can have waiting", async () => {
     const student = await makeStudent();
     for (let i = 0; i < MAX_PENDING_REQUESTS; i++) {
@@ -260,6 +291,21 @@ describe("sessions", () => {
       code: "CONFLICT",
     });
     expect((await bookSession(pair.student, pair.connectionId, { slotStart: MONDAY_6PM }, NOW)).ok).toBe(true);
+  });
+
+  it("books a contested slot only once when students race for it", async () => {
+    const { teacher } = await listedTeacher();
+    const pairs: { student: Awaited<ReturnType<typeof makeStudent>>; connectionId: string }[] = [];
+    for (const student of await Promise.all(Array.from({ length: 4 }, () => makeStudent()))) {
+      const request = await requestTeacher(student, teacher.id, { goals: GOALS }, NOW);
+      if (!request.ok) throw new Error(request.message);
+      await respondToRequest(teacher, request.data.connectionId, true, {}, NOW);
+      pairs.push({ student, connectionId: request.data.connectionId });
+    }
+    const results = await Promise.all(pairs.map(({ student, connectionId }) => bookSession(student, connectionId, { slotStart: MONDAY_6PM }, NOW)));
+    expect(results.filter((result) => result.ok)).toHaveLength(1);
+    expect(results.every((result) => result.ok || result.code === "CONFLICT")).toBe(true);
+    expect(await db.tutoringSession.count({ where: { teacherId: teacher.id, startsAt: new Date(MONDAY_6PM) } })).toBe(1);
   });
 
   it("only books for accepted students, and caps upcoming sessions", async () => {

@@ -1,26 +1,34 @@
 import "server-only";
-import { PrismaLibSql } from "@prisma/adapter-libsql";
-import { PrismaClient } from "@/generated/prisma/client";
+import { createPrismaClient } from "./db-client";
 
-function createClient() {
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    throw new Error("DATABASE_URL is not set. Copy .env.example to .env and fill it in.");
-  }
-  const adapter = new PrismaLibSql({ url, authToken: process.env.DATABASE_AUTH_TOKEN || undefined });
-  return new PrismaClient({ adapter });
-}
+type Client = ReturnType<typeof createPrismaClient>;
 
-type Client = ReturnType<typeof createClient>;
-
-// Reuse one client across hot reloads in development.
+// One client per server instance, reused across hot reloads in development.
 const globalForDb = globalThis as unknown as { db?: Client };
 
-export const db: Client = globalForDb.db ?? createClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.db = db;
+function client(): Client {
+  globalForDb.db ??= createPrismaClient();
+  return globalForDb.db;
 }
+
+/**
+ * The Prisma client, created on first use. Importing this module never needs
+ * DATABASE_URL, so `next build` works without database credentials.
+ */
+export const db: Client = new Proxy({} as Client, {
+  get(_target, property) {
+    const real = client();
+    const value = Reflect.get(real, property, real);
+    return typeof value === "function" ? value.bind(real) : value;
+  },
+});
 
 export type Db = Client;
 export type Tx = Parameters<Parameters<Client["$transaction"]>[0]>[0];
+
+/** Close the connection pool if one was opened, e.g. before a test worker exits. */
+export async function disconnectDb(): Promise<void> {
+  const open = globalForDb.db;
+  globalForDb.db = undefined;
+  await open?.$disconnect();
+}

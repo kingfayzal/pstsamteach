@@ -10,10 +10,10 @@ mark, platform owners run it. Starting subjects: English, Mathematics, Nursing.
 | App | Next.js 16 (App Router, Server Actions, Turbopack) | One codebase for UI + server logic; actions give CSRF-safe mutations |
 | Language | TypeScript (strict) | |
 | Styling | Tailwind CSS 4 + CSS tokens | Design tokens live in `globals.css` |
-| Data | Prisma 7 + libSQL/SQLite | Local file in dev, Turso in prod — same SQL dialect, no schema switch |
+| Data | Prisma 7 + Postgres (node-postgres adapter) | Docker Postgres in dev, Supabase in prod; serverless-friendly through Supabase's pooler |
 | Validation | Zod 4 | Every form and action input is parsed at the boundary |
 | Auth | Own session auth: scrypt hashes, DB sessions, httpOnly cookie | No third-party dependency; sessions revocable (suspend = instant logout) |
-| Tests | Vitest (unit + integration against a real SQLite file), Playwright (E2E) | |
+| Tests | Vitest (unit + integration against a real Postgres database), Playwright (E2E) | |
 
 ## Roles
 
@@ -69,7 +69,7 @@ first for logic, 80% coverage target on `lib/` and `server/`.
 
 1. Foundation — schema, Prisma client, auth (password, sessions, rate limit), design tokens, shells.
 2. Pure logic (TDD) — grading, progress, course lifecycle, validation, video embeds, slugs.
-3. Services (TDD, integration tests on SQLite) — accounts, courses, lessons, assessments, enrolment, submissions, marking, admin.
+3. Services (TDD, integration tests on a real database) — accounts, courses, lessons, assessments, enrolment, submissions, marking, admin.
 4. UI — public, student, teacher, admin.
 5. Seed data — three subjects, demo courses with real lesson content.
 6. E2E — student, teacher, admin critical paths.
@@ -79,7 +79,7 @@ first for logic, 80% coverage target on `lib/` and `server/`.
 
 - Brand name is a placeholder (`src/lib/site.ts`). Rename in one place.
 - No payments in v1 — pricing isn't decided. Enrolment is free.
-- In-memory rate limiter resets per server instance; swap for Redis/Upstash when deployed to more than one instance.
+- Rate limits are counters in Postgres (one atomic upsert per hit), so they hold across serverless instances. Move to Redis only if that table gets hot.
 - Lesson content is Markdown (no raw HTML). Video embeds limited to YouTube/Vimeo.
 - File uploads for assignments are text-only in v1 (no storage bucket yet).
 
@@ -120,7 +120,8 @@ ACTIVE: book sessions from open slots, message, review; either side can end -> E
 - Requests only to listed teachers accepting new students; max 5 pending requests per student.
 - Slots: next 14 days, 30-minute steps, at least 12 hours' notice, never overlapping the teacher's
   confirmed sessions (or live requests) or the student's own sessions. The server regenerates slots
-  to validate every booking; SQLite's serialised writes stop two people taking the same slot.
+  to validate every booking, inside a transaction holding a Postgres advisory lock per person, so two
+  people can't take the same slot at once.
 - Messages while `PENDING` or `ACTIVE`. Reviews once the student has had at least one session.
 - Times are stored in UTC and shown in the viewer's time zone (account setting, else the browser's,
   captured in a cookie).

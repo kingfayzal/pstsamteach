@@ -10,14 +10,17 @@ A teaching platform for **English, Mathematics and Nursing** with three sides:
 
 ## Quick start
 
-Requires Node 20.9+ (developed on Node 24).
+Requires Node 20.9+ (developed on Node 24) and Postgres. The easiest local Postgres is Docker:
 
 ```bash
 npm install
 cp .env.example .env
+npm run db:up        # Postgres 17 in Docker, on localhost:5432
 npm run setup        # migrate, generate the Prisma client, seed demo data
 npm run dev          # http://localhost:3000
 ```
+
+No Docker? Any Postgres works: point `DATABASE_URL` and `DIRECT_URL` in `.env` at it. `npx prisma dev` starts a throwaway local one and prints its URL. It serves one connection at a time, so also set `DATABASE_POOL_MAX=1`.
 
 `npm run setup` prints the demo accounts. They all share one password: whatever you put in `SEED_DEMO_PASSWORD` in `.env`, or a random one printed once if you leave it empty.
 
@@ -35,20 +38,23 @@ npm run dev          # http://localhost:3000
 | `npm run dev` | Dev server (Turbopack) |
 | `npm run build` / `npm start` | Production build and server |
 | `npm run lint` / `npm run typecheck` | ESLint / TypeScript |
-| `npm test` | Unit + integration tests (Vitest, real SQLite test database) |
+| `npm test` | Unit + integration tests (Vitest) against a real Postgres test database |
 | `npm run test:coverage` | Same, with coverage gates (80% lines/statements/functions, 75% branches) |
 | `npm run test:e2e` | Playwright end-to-end tests against a production build with its own seeded database |
+| `npm run db:up` / `npm run db:down` | Start / stop the local Postgres container |
 | `npm run db:migrate` | Create a migration after editing `prisma/schema.prisma` |
+| `npm run db:deploy` | Apply pending migrations (what production runs on each deploy) |
 | `npm run db:seed` / `npm run db:reset` | Reseed / wipe and rebuild the local database |
+| `npm run create-admin` | Create the first admin, or promote an account, on any database (see Deploying) |
 
-Playwright uses your installed Chrome locally. In CI it installs Chromium.
+Tests use their own databases on the same server: `pstsamteach_test` and `pstsamteach_e2e` (override with `TEST_DATABASE_URL` / `E2E_DATABASE_URL`). They're created and migrated automatically, and refuse to run against anything but a local database. Playwright uses your installed Chrome locally. In CI, GitHub Actions runs everything against a Postgres 17 service.
 
 ## How it's built
 
 | Layer | Choice |
 | --- | --- |
-| App | Next.js 16 App Router, Server Components, Server Actions |
-| Data | Prisma 7 on libSQL: a SQLite file locally, [Turso](https://turso.tech) in production (same dialect, no schema changes) |
+| App | Next.js 16 App Router, Server Components, Server Actions, hosted on [Vercel](https://vercel.com) |
+| Data | Prisma 7 on Postgres through the node-postgres driver adapter: Docker locally, [Supabase](https://supabase.com) in production |
 | Auth | Own implementation: scrypt password hashes, random session tokens stored hashed in the database, httpOnly cookie |
 | Validation | Zod at every boundary |
 | Styling | Tailwind CSS 4 with design tokens in `src/app/globals.css` |
@@ -72,7 +78,7 @@ docs/             PLAN.md (build plan), DESIGN.md (design rationale)
 
 **Authorization lives in the service and query layer**, not just the UI: every service takes the acting user and checks role, status and ownership itself. Things you can't manage come back as "not found", so their existence doesn't leak. Quiz answer keys never reach the browser until after a quiz is submitted (checked by an E2E test).
 
-**Choosing a teacher:** a student sends a request (with their goals and, optionally, a first session time) to a listed teacher who is taking students. The teacher accepts (the first session is confirmed) or declines with a note. Once accepted, the student books sessions from the teacher's open slots: next 14 days, 30-minute steps, at least 12 hours ahead, never clashing with either person's other sessions. Times are stored in UTC and shown in each viewer's own time zone. Sessions happen on the teacher's own meeting link, which is only shown on confirmed sessions.
+**Choosing a teacher:** a student sends a request (with their goals and, optionally, a first session time) to a listed teacher who is taking students. The teacher accepts (the first session is confirmed) or declines with a note. Once accepted, the student books sessions from the teacher's open slots: next 14 days, 30-minute steps, at least 12 hours ahead, never clashing with either person's other sessions. Each booking runs in a transaction holding a Postgres advisory lock per person, so two students can't take the same slot at the same moment. Times are stored in UTC and shown in each viewer's own time zone. Sessions happen on the teacher's own meeting link, which is only shown on confirmed sessions.
 
 **Course lifecycle:** Draft → In review (teacher submits) → Published (admin approves) → Archived. Admins can send a course back with notes, or unpublish it. Teachers can't edit a course while it's in review.
 
@@ -81,17 +87,57 @@ docs/             PLAN.md (build plan), DESIGN.md (design rationale)
 - Passwords: scrypt (N=16384), per-user salt, constant-time comparison, dummy hash on unknown emails to avoid timing leaks.
 - Sessions: 32-byte random tokens; only the SHA-256 hash is stored. Suspending a user ends their sessions immediately. Changing your password signs out other devices.
 - CSRF: all mutations are Server Actions (origin-checked by Next.js); cookies are `SameSite=Lax`.
-- Rate limiting on login and sign-up (in memory, per instance).
+- Rate limiting on login, sign-up, teacher requests and messages. Counters live in Postgres, so limits hold across every serverless instance.
 - Content Security Policy, `frame-ancestors 'none'`, `nosniff`, a strict referrer policy and HSTS in production. Video embeds are limited to YouTube (privacy-enhanced) and Vimeo.
 - Lesson Markdown is rendered without raw HTML, and unsafe URLs are stripped.
 - Every admin action and course decision is written to an append-only activity log.
 
-## Deploying (Vercel + Turso)
+## Deploying (Vercel + Supabase)
 
-1. Create a Turso database and an auth token.
-2. Set `DATABASE_URL=libsql://…` and `DATABASE_AUTH_TOKEN=…` in the host's environment.
-3. Run `npm run db:deploy` against it once (and after each new migration).
-4. Create the first admin: sign up normally, then promote that account in the database (`UPDATE User SET role='ADMIN' WHERE email='…'`). The seed refuses to run against a remote database unless you set `SEED_ALLOW_REMOTE=1`.
+The free tiers of both are enough for an MVP. You need a GitHub account with access to this repo.
+
+### 1. Database: Supabase
+
+1. Create a project at [supabase.com](https://supabase.com). Choose the region closest to your users, and keep the database password in a password manager.
+2. Click **Connect** and copy two connection strings, putting your database password in place of `[YOUR-PASSWORD]` (URL-encode it if it contains symbols such as `@` or `#`):
+   - **Transaction pooler** (port 6543): this is `DATABASE_URL`, used by the app.
+   - **Session pooler** (port 5432): this is `DIRECT_URL`, used to run migrations.
+
+   Vercel can't use Supabase's direct connection (`db.<ref>.supabase.co`) because it's IPv6-only. The poolers work over IPv4.
+3. The app talks to Postgres directly and never uses Supabase's Data API; the migrations switch on row-level security for every table, which hides them from that API. You can also turn the Data API off in the project's API settings.
+4. Optional hardening: under **Database Settings → SSL Configuration**, download the certificate and paste its contents into a `DATABASE_CA_CERT` variable (next step). Without it the connection is still encrypted, but the server's certificate isn't verified.
+
+### 2. App: Vercel
+
+1. At [vercel.com/new](https://vercel.com/new), import this GitHub repo. Next.js is detected automatically, and `vercel.json` sets the build command to `npm run vercel-build`, so leave the build settings alone.
+2. Before the first deploy, add these environment variables (**Settings → Environment Variables**), scoped to **Production**:
+
+   | Variable | Value |
+   | --- | --- |
+   | `DATABASE_URL` | Supabase transaction pooler string |
+   | `DIRECT_URL` | Supabase session pooler string |
+   | `SITE_NAME` | The brand shown in the app |
+   | `SUPPORT_EMAIL` | Where users should write for help |
+   | `DATABASE_CA_CERT` | Optional, see above |
+
+3. In **Settings → Functions**, set the function region to the one nearest your Supabase region. Every page makes several database queries, so a long hop between the two slows everything down.
+4. Deploy. Production builds apply any new migrations (`prisma migrate deploy`) before building. Preview deployments skip migrations and, without database variables of their own, can't reach a database. Give previews a second Supabase project if you want them to work.
+
+### 3. First admin
+
+Run this once from your machine, pointing at production with the session pooler string:
+
+```bash
+DATABASE_URL="<session pooler string>" ADMIN_EMAIL="you@example.com" ADMIN_NAME="Your Name" npm run create-admin
+```
+
+It prints a one-time password (or uses `ADMIN_PASSWORD` if you set it). Sign in and change it under **Account**. If the email already has an account, that account is promoted to admin instead. Don't seed production: the seed refuses remote databases unless `SEED_ALLOW_REMOTE=1`, and every demo account shares one password.
+
+### Before real users arrive
+
+- Supabase pauses free projects after a week without activity, and the free plan's backups are limited. Move to a paid plan before launch.
+- Teacher photos are stored in Postgres (2 MB cap). That's fine for an MVP; move them to object storage (such as Supabase Storage) as the directory grows.
+- Add your domain under Vercel **Settings → Domains**. HSTS is sent in production, so serve the whole domain over HTTPS.
 
 ## Not in v1 (decisions needed)
 
@@ -100,5 +146,4 @@ docs/             PLAN.md (build plan), DESIGN.md (design rationale)
 - **Notifications.** New requests, messages and bookings show as in-app badges only; email or SMS needs a provider.
 - **Email.** No verification, password reset or notification emails yet. Needs an email provider.
 - **File uploads.** Assignments are typed answers. Teacher photos are stored in the database (2 MB cap), which is fine at this scale; move them to object storage later.
-- **Rate limiting across instances.** Swap the in-memory limiter for Redis/Upstash when running more than one server.
 - **Brand.** The name and support email in `src/lib/site.ts` are placeholders.

@@ -38,7 +38,7 @@ export async function listCatalog(filters: { subject?: string; q?: string }): Pr
     where: {
       status: "PUBLISHED",
       subject: { isActive: true, ...(filters.subject ? { slug: filters.subject } : {}) },
-      ...(q ? { OR: [{ title: { contains: q } }, { summary: { contains: q } }] } : {}),
+      ...(q ? { OR: [{ title: { contains: q, mode: "insensitive" } }, { summary: { contains: q, mode: "insensitive" } }] } : {}),
     },
     orderBy: [{ isFeatured: "desc" }, { publishedAt: "desc" }],
     select: cardSelect,

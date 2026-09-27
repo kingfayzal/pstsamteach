@@ -1,4 +1,4 @@
-import type { PrismaClient } from "../../src/generated/prisma/client";
+import type { createPrismaClient } from "../../src/server/db-client";
 import { generateSlots } from "../../src/lib/scheduling";
 import { slugify } from "../../src/lib/slug";
 import { addDays, zonedParts, zonedTimeToUtc } from "../../src/lib/time-zones";
@@ -14,7 +14,7 @@ function pastAt(daysAgo: number, hour: number, timeZone: string): Date {
   return zonedTimeToUtc({ ...date, hour, minute: 0 }, timeZone);
 }
 
-async function createTopics(db: PrismaClient, subjectIds: Ids): Promise<Ids> {
+async function createTopics(db: ReturnType<typeof createPrismaClient>, subjectIds: Ids): Promise<Ids> {
   const topicIds: Ids = {};
   for (const [subject, names] of Object.entries(TOPICS)) {
     for (const [position, name] of names.entries()) {
@@ -25,7 +25,7 @@ async function createTopics(db: PrismaClient, subjectIds: Ids): Promise<Ids> {
   return topicIds;
 }
 
-async function createProfile(db: PrismaClient, teacherId: string, spec: TeacherSeed, topicIds: Ids) {
+async function createProfile(db: ReturnType<typeof createPrismaClient>, teacherId: string, spec: TeacherSeed, topicIds: Ids) {
   return db.teacherProfile.create({
     data: {
       userId: teacherId,
@@ -52,7 +52,7 @@ function openSlots(spec: TeacherSeed) {
   return generateSlots({ windows: spec.windows, timeZone: spec.timeZone, sessionMinutes: spec.sessionMinutes, now: new Date() });
 }
 
-export async function seedTeachers(db: PrismaClient, ids: Ids, subjectIds: Ids, passwordHash: string): Promise<string[]> {
+export async function seedTeachers(db: ReturnType<typeof createPrismaClient>, ids: Ids, subjectIds: Ids, passwordHash: string): Promise<string[]> {
   const topicIds = await createTopics(db, subjectIds);
   const teacherIds: Ids = { ...ids };
   for (const spec of TEACHERS) {

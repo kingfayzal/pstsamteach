@@ -13,7 +13,7 @@ export default defineConfig({
     include: ["tests/**/*.test.ts"],
     globalSetup: ["tests/global-setup.ts"],
     setupFiles: ["tests/setup.ts"],
-    // Integration tests share one SQLite file; run files one at a time.
+    // Integration tests share one database; run files one at a time.
     fileParallelism: false,
     coverage: {
       provider: "v8",

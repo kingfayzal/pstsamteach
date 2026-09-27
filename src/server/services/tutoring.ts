@@ -2,7 +2,7 @@ import "server-only";
 import { BOOKING_HORIZON_DAYS, findBookableSlot } from "@/lib/scheduling";
 import { bookingSchema, cancelSchema } from "@/lib/validation/teacher";
 import { db } from "@/server/db";
-import { busyIntervals, loadSchedulingProfile } from "./teacher-common";
+import { busyIntervals, loadSchedulingProfile, lockSchedules } from "./teacher-common";
 import { type Actor, fail, forbidden, invalid, isActiveRole, notFound, ok, type ServiceResult } from "./result";
 
 export const MAX_UPCOMING_SESSIONS = 10;
@@ -37,6 +37,7 @@ export async function bookSession(
   }
 
   const session = await db.$transaction(async (tx) => {
+    await lockSchedules(tx, [connection.teacherId, actor.id]);
     const busy = await busyIntervals(tx, { teacherId: connection.teacherId, studentId: actor.id }, now, new Date(now.getTime() + (BOOKING_HORIZON_DAYS + 1) * DAY));
     const slot = findBookableSlot(parsed.data.slotStart, {
       windows: profile.availability,

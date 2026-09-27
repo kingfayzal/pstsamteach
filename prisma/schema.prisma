@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 enum Role {
@@ -496,4 +496,11 @@ model SavedTeacher {
 
   @@id([studentId, teacherId])
   @@index([teacherId])
+}
+
+/// Fixed-window request counters for rate limiting, shared by every server instance.
+model RateLimit {
+  key         String   @id
+  count       Int
+  windowStart DateTime
 }

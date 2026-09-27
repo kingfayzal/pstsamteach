@@ -15,7 +15,7 @@ function tooManyAttempts(retryAfterMs: number): FormState {
 }
 
 export async function signupAction(_prev: FormState, form: FormData): Promise<FormState> {
-  const limit = signupLimiter.hit(`signup:${await clientIp()}`);
+  const limit = await signupLimiter.hit(`signup:${await clientIp()}`);
   if (!limit.allowed) return tooManyAttempts(limit.retryAfterMs);
 
   const result = await registerStudent(formDataToObject(form));
@@ -26,7 +26,7 @@ export async function signupAction(_prev: FormState, form: FormData): Promise<Fo
 }
 
 export async function applyToTeachAction(_prev: FormState, form: FormData): Promise<FormState> {
-  const limit = signupLimiter.hit(`signup:${await clientIp()}`);
+  const limit = await signupLimiter.hit(`signup:${await clientIp()}`);
   if (!limit.allowed) return tooManyAttempts(limit.retryAfterMs);
 
   const result = await applyToTeach(formDataToObject(form));
@@ -39,13 +39,13 @@ export async function applyToTeachAction(_prev: FormState, form: FormData): Prom
 export async function loginAction(_prev: FormState, form: FormData): Promise<FormState> {
   const email = readString(form, "email").trim().toLowerCase();
   const key = `login:${await clientIp()}:${email}`;
-  const limit = loginLimiter.hit(key);
+  const limit = await loginLimiter.hit(key);
   if (!limit.allowed) return tooManyAttempts(limit.retryAfterMs);
 
   const result = await authenticate(formDataToObject(form));
   if (!result.ok) return errorState(result, form);
 
-  loginLimiter.reset(key);
+  await loginLimiter.reset(key);
   await startSession(result.data.id);
   await captureTimeZone(result.data.id, await getBrowserTimeZone());
   const next = safeNextPath(readString(form, "next"));

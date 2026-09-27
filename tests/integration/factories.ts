@@ -21,6 +21,7 @@ export async function resetDb(): Promise<void> {
   await db.session.deleteMany();
   await db.user.deleteMany();
   await db.subject.deleteMany();
+  await db.rateLimit.deleteMany();
 }
 
 export async function makeUser(

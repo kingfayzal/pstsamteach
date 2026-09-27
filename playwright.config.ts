@@ -1,21 +1,19 @@
 import { execSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { rmSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * E2E runs against a production build on port 3100 with its own SQLite file,
- * freshly migrated and seeded. The demo password is generated per run and
+ * E2E runs against a production build on port 3100 with its own Postgres
+ * database, freshly migrated and seeded. The demo password is generated per run and
  * handed to the tests through the environment, never written to disk.
  */
 const PORT = 3100;
-const DATABASE_URL = "file:./e2e.db";
+const DATABASE_URL = process.env.E2E_DATABASE_URL ?? "postgresql://postgres@localhost:5432/pstsamteach_e2e";
 
 // Workers re-evaluate this file; only the main process prepares the database.
 if (!process.env.E2E_PASSWORD) {
   process.env.E2E_PASSWORD = `e2e-${randomBytes(8).toString("base64url")}-1`;
-  for (const suffix of ["", "-journal", "-wal", "-shm"]) rmSync(`e2e.db${suffix}`, { force: true });
-  const env = { ...process.env, DATABASE_URL, SEED_DEMO_PASSWORD: process.env.E2E_PASSWORD };
+  const env = { ...process.env, DATABASE_URL, DIRECT_URL: DATABASE_URL, SEED_DEMO_PASSWORD: process.env.E2E_PASSWORD };
   execSync("npx prisma migrate deploy", { stdio: "pipe", env });
   execSync("npx prisma db seed", { stdio: "pipe", env });
 }
@@ -50,6 +48,6 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     timeout: 300_000,
     reuseExistingServer: false,
-    env: { DATABASE_URL, NEXT_DIST_DIR: ".next-e2e" },
+    env: { DATABASE_URL, DIRECT_URL: DATABASE_URL, NEXT_DIST_DIR: ".next-e2e" },
   },
 });

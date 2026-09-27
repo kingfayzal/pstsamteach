@@ -84,7 +84,7 @@ export async function listUsers(filters: UserFilters) {
   const where: Prisma.UserWhereInput = {
     ...(role ? { role } : {}),
     ...(status ? { status } : {}),
-    ...(q ? { OR: [{ name: { contains: q } }, { email: { contains: q.toLowerCase() } }] } : {}),
+    ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { email: { contains: q.toLowerCase(), mode: "insensitive" } }] } : {}),
   };
   const [users, total] = await Promise.all([
     db.user.findMany({
@@ -140,7 +140,7 @@ export async function listAllCourses(filters: { status?: string; q?: string; sub
     where: {
       ...(status ? { status } : {}),
       ...(filters.subject ? { subject: { slug: filters.subject } } : {}),
-      ...(q ? { OR: [{ title: { contains: q } }, { teacher: { name: { contains: q } } }] } : {}),
+      ...(q ? { OR: [{ title: { contains: q, mode: "insensitive" } }, { teacher: { name: { contains: q, mode: "insensitive" } } }] } : {}),
     },
     orderBy: { updatedAt: "desc" },
     take: 200,

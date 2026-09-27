@@ -2,7 +2,7 @@ import "server-only";
 import { findBookableSlot, BOOKING_HORIZON_DAYS } from "@/lib/scheduling";
 import { connectionRequestSchema, declineSchema } from "@/lib/validation/teacher";
 import { db } from "@/server/db";
-import { busyIntervals, loadSchedulingProfile, profileIsListed } from "./teacher-common";
+import { busyIntervals, loadSchedulingProfile, lockSchedules, profileIsListed } from "./teacher-common";
 import { type Actor, fail, forbidden, invalid, isActiveRole, notFound, ok, type ServiceResult } from "./result";
 
 export const MAX_PENDING_REQUESTS = 5;
@@ -40,6 +40,8 @@ export async function requestTeacher(
   }
 
   const connection = await db.$transaction(async (tx) => {
+    // Also serialises a double-submitted request, so the second one just updates the first.
+    await lockSchedules(tx, [teacherId, actor.id]);
     let slot = null;
     if (slotStart) {
       const busy = await busyIntervals(tx, { teacherId, studentId: actor.id }, now, new Date(now.getTime() + (BOOKING_HORIZON_DAYS + 1) * DAY));
@@ -88,16 +90,19 @@ export async function respondToRequest(
   const parsed = declineSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
 
-  await db.$transaction(async (tx) => {
-    await tx.teacherConnection.update({
-      where: { id: connectionId },
+  const replied = await db.$transaction(async (tx) => {
+    await lockSchedules(tx, [actor.id]);
+    // Only a still-pending request changes, so a double-submitted reply applies once.
+    const claimed = await tx.teacherConnection.updateMany({
+      where: { id: connectionId, status: "PENDING" },
       data: { status: accept ? "ACTIVE" : "DECLINED", respondedAt: now, responseNote: accept ? null : parsed.data.note },
     });
+    if (claimed.count === 0) return false;
     for (const session of connection.sessions) {
       const clash =
         accept &&
         (await tx.tutoringSession.count({
-          where: { teacherId: actor.id, status: "CONFIRMED", startsAt: { lt: session.endsAt }, endsAt: { gt: session.startsAt } },
+          where: { id: { not: session.id }, teacherId: actor.id, status: "CONFIRMED", startsAt: { lt: session.endsAt }, endsAt: { gt: session.startsAt } },
         })) > 0;
       const keep = accept && session.startsAt > now && !clash;
       await tx.tutoringSession.update({
@@ -111,7 +116,9 @@ export async function respondToRequest(
             },
       });
     }
+    return true;
   });
+  if (!replied) return fail("CONFLICT", "You've already replied to this request.");
   return ok({ status: accept ? "ACTIVE" : "DECLINED" });
 }
 

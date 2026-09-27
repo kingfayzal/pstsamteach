@@ -58,7 +58,7 @@ export async function cancelSessionAction(sessionId: string, returnTo: string, _
 
 export async function sendMessageAction(connectionId: string, returnTo: string, _prev: FormState, form: FormData): Promise<FormState> {
   const user = await requireUser();
-  const limit = messageLimiter.hit(`message:${user.id}`);
+  const limit = await messageLimiter.hit(`message:${user.id}`);
   if (!limit.allowed) return { ok: false, message: "You're sending messages very quickly. Wait a few minutes and try again." };
   const result = await sendMessage(user, connectionId, formDataToObject(form));
   if (!result.ok) return errorState(result, form);

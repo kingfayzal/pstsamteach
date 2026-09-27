@@ -25,14 +25,14 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
-  ...(isDev ? [] : [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" }]),
+  // No "preload": that is hard to undo; add it once the production domain is final.
+  ...(isDev ? [] : [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }]),
 ];
 
 const nextConfig: NextConfig = {
   // Lets the E2E server build into its own folder alongside a running dev server.
   distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
-  serverExternalPackages: ["@libsql/client", "@prisma/adapter-libsql"],
   experimental: {
     // Teacher photos are capped at 2 MB; leave room for multipart overhead.
     serverActions: { bodySizeLimit: "3mb" },
