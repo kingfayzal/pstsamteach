@@ -21,6 +21,8 @@
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",
     "create-admin": "tsx scripts/create-admin.ts",
+    "demo:add": "tsx scripts/demo.ts add",
+    "demo:remove": "tsx scripts/demo.ts remove",
     "setup": "prisma migrate deploy && prisma generate && prisma db seed",
     "postinstall": "prisma generate"
   },
