@@ -4,7 +4,15 @@ import { hashPassword } from "@/server/auth/password";
 import { db } from "@/server/db";
 import { listDirectory } from "@/server/queries/teachers";
 import { authenticate } from "@/server/services/accounts";
-import { addDemoData, DEMO_STUDENTS, DEMO_SUBJECTS, DEMO_TEACHERS, removeDemoData } from "../../scripts/demo-data";
+import {
+  addDemoData,
+  DEMO_STUDENTS,
+  DEMO_SUBJECTS,
+  DEMO_TEACHERS,
+  demoDataPresent,
+  removeDemoData,
+  syncDemoData,
+} from "../../scripts/demo-data";
 import { makeCourse, makeStudent, makeSubject, makeTeacher, resetDb } from "./factories";
 
 beforeEach(resetDb);
@@ -66,6 +74,28 @@ describe("demo data", { timeout: 30_000 }, () => {
     expect((await db.subject.findMany({ select: { id: true } })).map((s) => s.id)).toEqual([realSubject.id]);
     expect(await db.course.count()).toBe(0);
     expect(await removeDemoData(db)).toEqual({ users: 0, subjects: 0, keptSubjects: [] });
+  });
+
+  it("syncs to the production switch: adds once, leaves it alone after that, removes when off", async () => {
+    let hashed = 0;
+    const makeHash = async () => {
+      hashed += 1;
+      return hashPassword(PASSWORD);
+    };
+    expect(await demoDataPresent(db)).toBe(false);
+    expect(await syncDemoData(db, true, makeHash)).toEqual({ action: "added" });
+    expect(await demoDataPresent(db)).toBe(true);
+
+    // Edits made while demoing survive the next deploy, and no new password is made.
+    const mark = await db.user.findUniqueOrThrow({ where: { email: DEMO_TEACHERS[0].email } });
+    await db.teacherProfile.update({ where: { userId: mark.id }, data: { headline: "Edited during a demo" } });
+    expect(await syncDemoData(db, true, makeHash)).toEqual({ action: "kept" });
+    expect(hashed).toBe(1);
+    expect((await db.teacherProfile.findUniqueOrThrow({ where: { userId: mark.id } })).headline).toBe("Edited during a demo");
+
+    expect(await syncDemoData(db, false, makeHash)).toEqual({ action: "removed", users: 6, subjects: 3, keptSubjects: [] });
+    expect(await demoDataPresent(db)).toBe(false);
+    expect(await syncDemoData(db, false, makeHash)).toEqual({ action: "removed", users: 0, subjects: 0, keptSubjects: [] });
   });
 
   it("keeps a demo subject that someone else's course still uses", async () => {

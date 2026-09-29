@@ -46,7 +46,7 @@ No Docker? Any Postgres works: point `DATABASE_URL` and `DIRECT_URL` in `.env` a
 | `npm run db:deploy` | Apply pending migrations (what production runs on each deploy) |
 | `npm run db:seed` / `npm run db:reset` | Reseed / wipe and rebuild the local database |
 | `npm run create-admin` | Create the first admin, or promote an account, on any database (see Deploying) |
-| `npm run demo:add` / `npm run demo:remove` | Add or remove the labelled "D-" demo subjects, teachers and students on any database (see Deploying) |
+| `npm run demo:add` / `npm run demo:remove` | Add or remove the labelled "D-" demo subjects, teachers and students on any database by hand (production follows a switch; see Deploying) |
 
 Tests use their own databases on the same server: `pstsamteach_test` and `pstsamteach_e2e` (override with `TEST_DATABASE_URL` / `E2E_DATABASE_URL`). They're created and migrated automatically, and refuse to run against anything but a local database. Playwright uses your installed Chrome locally. In CI, GitHub Actions runs everything against a Postgres 17 service.
 
@@ -134,21 +134,15 @@ DATABASE_URL="<session pooler string>" ADMIN_EMAIL="you@example.com" ADMIN_NAME=
 
 It prints a one-time password (or uses `ADMIN_PASSWORD` if you set it). Sign in and change it under **Account**. If the email already has an account, that account is promoted to admin instead. Don't seed production: the seed refuses remote databases unless `SEED_ALLOW_REMOTE=1`, and every demo account shares one password.
 
-### 4. Demo data (optional)
+### 4. Demo data
 
-To show the platform before real teachers join, add three clearly labelled demo subjects (D-Science, D-History, D-Geography), teachers (D-Mark Buck, D-Amara Eze, D-Tunde Bakare) and students (D-Chioma Okeke, D-Liam Carter, D-Zainab Bello):
+Three clearly labelled demo subjects (D-Science, D-History, D-Geography), teachers (D-Mark Buck, D-Amara Eze, D-Tunde Bakare) and students (D-Chioma Okeke, D-Liam Carter, D-Zainab Bello) show the platform before real teachers join.
 
-```bash
-DATABASE_URL="<session pooler string>" npm run demo:add
-```
+Production follows a switch in the repo: `DEMO_DATA_ON_PRODUCTION` in `scripts/demo-data.ts`. While it's `true`, each production deploy adds the demo data if none of it is there yet, and otherwise leaves it alone (so passwords and anything edited during a demo stay). Set it to `false` and push, and the next deploy removes exactly the demo records and anything attached to them (requests, messages, sessions, and courses made by demo teachers). Nothing else is touched.
 
-It prints the demo emails (such as `d-mark.buck@example.com`) and one password shared by all six accounts, shown once (or set `DEMO_PASSWORD`). Running it again resets the demo records and sets a new password. The demo teachers are listed in the directory and accept requests, so real visitors can find them too. Remove everything before launch:
-
-```bash
-DATABASE_URL="<session pooler string>" npm run demo:remove
-```
-
-This deletes only the demo records and anything attached to them (requests, messages, sessions, and courses made by demo teachers). Nothing else is touched.
+- **Demo logins:** the emails are `d-mark.buck@example.com`, `d-chioma.okeke@example.com` and so on. All six accounts share one password, printed once in the build log of the deploy that created them (Vercel → Deployments → that deploy → Build Logs, search for "demo"). To choose it yourself instead, add a `DEMO_PASSWORD` environment variable before that deploy.
+- **They're public:** the demo teachers are listed in the directory and accept requests, so real visitors can find them too. Switch the demo data off before launch.
+- **By hand:** `DATABASE_URL="<session pooler string>" npm run demo:add` (or `demo:remove`) does the same on any database, and `add` resets the demo records to their definition with a new password.
 
 ### Before real users arrive
 

@@ -9,6 +9,13 @@ import { slugify } from "../src/lib/slug";
 type Db = ReturnType<typeof createPrismaClient>;
 type Window = { weekday: number; startMinute: number; endMinute: number };
 
+/**
+ * Whether production should have the demo data. Every production deploy applies
+ * this (scripts/vercel-build.mjs runs `demo.ts sync`): true adds the demo data
+ * if it isn't there, false removes it. Change it and push to switch.
+ */
+export const DEMO_DATA_ON_PRODUCTION = true;
+
 const h = (hour: number) => hour * 60;
 const days = (weekdays: number[], start: number, end: number): Window[] => weekdays.map((weekday) => ({ weekday, startMinute: start, endMinute: end }));
 
@@ -166,6 +173,32 @@ export async function addDemoData(db: Db, passwordHash: string): Promise<{ subje
     }
   }, TRANSACTION);
   return { subjects: DEMO_SUBJECTS.length, teachers: DEMO_TEACHERS.length, students: DEMO_STUDENTS.length };
+}
+
+/** True when any demo account or subject exists. */
+export async function demoDataPresent(db: Db): Promise<boolean> {
+  const [users, subjects] = await Promise.all([
+    db.user.count({ where: { email: { in: DEMO_EMAILS } } }),
+    db.subject.count({ where: { slug: { in: DEMO_SUBJECT_SLUGS } } }),
+  ]);
+  return users + subjects > 0;
+}
+
+export type DemoSync =
+  | { action: "added" }
+  | { action: "kept" }
+  | { action: "removed"; users: number; subjects: number; keptSubjects: string[] };
+
+/**
+ * Bring a database in line with the demo switch. When on, the demo data is
+ * added only if none of it exists yet, so accounts, passwords and any edits
+ * made while demoing survive later deploys. When off, it's removed.
+ */
+export async function syncDemoData(db: Db, enabled: boolean, makePasswordHash: () => Promise<string>): Promise<DemoSync> {
+  if (!enabled) return { action: "removed", ...(await removeDemoData(db)) };
+  if (await demoDataPresent(db)) return { action: "kept" };
+  await addDemoData(db, await makePasswordHash());
+  return { action: "added" };
 }
 
 /**
