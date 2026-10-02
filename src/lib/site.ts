@@ -1,10 +1,11 @@
 /**
- * Brand and platform copy in one place. The defaults are Xcel Study's own name,
- * tagline and public contact details; SITE_NAME, SUPPORT_EMAIL and
- * SUPPORT_PHONE in the environment (e.g. Vercel project settings) override them.
+ * Brand and platform copy in one place. The name is fixed: an old SITE_NAME
+ * left in a deployment's settings must not rename the site. The contact
+ * details default to Xcel Study's public ones; SUPPORT_EMAIL and SUPPORT_PHONE
+ * in the environment (e.g. Vercel project settings) override them.
  */
 export const SITE = {
-  name: process.env.SITE_NAME || "Xcel Study",
+  name: "Xcel Study",
   tagline: "Learning with ease",
   description:
     "One-to-one lessons and courses with qualified teachers you choose yourself, at times that suit your schedule.",
