@@ -4,8 +4,11 @@
  * Design tokens — see docs/DESIGN.md.
  * Ink on exercise-book paper; marking-pen green is the only accent.
  * Subject colours come from the database and arrive as --subject.
+ * The two brand colours belong to the Xcel Study mark only.
  */
 @theme {
+  --color-brand: #1688ed;
+  --color-brand-navy: #0d093f;
   --color-paper: #f5f8fc;
   --color-sheet: #ffffff;
   --color-ink: #15213f;
@@ -227,6 +230,22 @@
   background: var(--color-rule-soft);
   padding: 0.1em 0.35em;
   border-radius: 4px;
+}
+
+/* Fixed-width blocks (e.g. guitar tab) scroll sideways rather than widening the page. */
+.prose-lesson pre {
+  overflow-x: auto;
+  background: var(--color-rule-soft);
+  padding: 0.75em 1em;
+  border-radius: 6px;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.prose-lesson pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
 }
 
 .prose-lesson table {

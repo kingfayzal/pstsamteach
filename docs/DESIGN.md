@@ -28,8 +28,24 @@ exercise book, its ruled paper, and the marking pen.
 | English | `#B3374A` | Exercise-book cover red |
 | Mathematics | `#2356C2` | Exercise-book cover blue |
 | Nursing | `#0A7684` | Scrubs teal |
+| Yoruba | `#8A4B0F` | Seed data only: warm brown, clear of English red and amber warnings |
+| Music | `#6B3FA0` | Seed data only: purple, clear of Mathematics blue |
+| Brand blue | `#1688ED` | Xcel Study's mark only (the star), never UI |
+| Brand navy | `#0D093F` | Xcel Study's mark only (the bookmark), never UI |
 
 Subject colours carry information (which subject this is), never decoration.
+Subject colours live on each subject in the database, so admins set them when
+they add a subject.
+
+## Brand
+
+The platform is **Xcel Study**, tagline *Learning with ease*. Its mark is a
+bookmark holding a star (`BrandMark` in `src/components/brand/wordmark.tsx`),
+drawn from the client's logo pack in the brand navy and blue. It sits beside the
+name in Atkinson at weight 800, so the wordmark matches the rest of the type.
+The favicon and Apple icon put a white mark on brand blue; the social-share
+image is the client's blue banner. The brand blue stays in the mark: it is too
+light for text on paper, and blue already means Mathematics.
 
 ## Type
 
@@ -50,7 +66,7 @@ The landing hero pairs a left-aligned headline with a marked worksheet:
 
 ```
 +---------------------------------------------------------------+
-| SamTeach                        Courses  Teach  Log in [Join] |
+| * Xcel Study                    Courses  Teach  Log in [Join] |
 |                                                               |
 | Learn it.                    .-----------------------------.  |
 | Practise it.                 | |  1. 3x + 5 = 20   x = 5  ✓ |  |

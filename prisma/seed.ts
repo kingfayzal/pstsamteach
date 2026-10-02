@@ -1,5 +1,5 @@
 /**
- * Demo data for local development: three subjects, teachers, students,
+ * Demo data for local development: Xcel Study's five subjects, teachers, students,
  * courses with real lesson content, and some activity so every screen has
  * something to show. Wipes the database first.
  *
@@ -13,7 +13,9 @@ import { createPrismaClient } from "../src/server/db-client";
 import { hashPassword } from "../src/server/auth/password-core";
 import { grammar, persuasiveEssay } from "./seed-content/english";
 import { algebra, fractions } from "./seed-content/maths";
+import { bassGuitar } from "./seed-content/music";
 import { dosage, infection } from "./seed-content/nursing";
+import { yorubaBasics } from "./seed-content/yoruba";
 import { seedTeachers } from "./seed-content/seed-teachers";
 import type { SeedCourse } from "./seed-content/types";
 
@@ -50,6 +52,20 @@ const SUBJECTS = [
     description: "Dosage calculations, patient safety and the core knowledge behind everyday clinical practice.",
     color: "#0A7684",
   },
+  {
+    slug: "yoruba",
+    name: "Yoruba",
+    tagline: "Speak, read and write Yoruba with ease",
+    description: "For all ages, with bilingual native speakers: everyday conversation, the tones that change a word's meaning, and reading and writing.",
+    color: "#8A4B0F",
+  },
+  {
+    slug: "music",
+    name: "Music",
+    tagline: "Bass guitar and more, from your first note",
+    description: "Lessons from working musicians for ages 13 and above, starting with bass guitar: technique, timing and grooves that hold a band together.",
+    color: "#6B3FA0",
+  },
 ] as const;
 
 const PEOPLE = {
@@ -57,10 +73,15 @@ const PEOPLE = {
   grace: { name: "Grace Adeyemi", email: "grace@example.com", role: "TEACHER" as const, bio: "English teacher for twelve years, mostly exam classes. I care about writing that's easy to read." },
   daniel: { name: "Daniel Okafor", email: "daniel@example.com", role: "TEACHER" as const, bio: "Secondary maths teacher and tutor. I show every step, because the steps are the maths." },
   ruth: { name: "Ruth Mensah", email: "ruth@example.com", role: "TEACHER" as const, bio: "Nurse educator. I teach calculations the way I'd want them checked on a ward." },
+  bisi: { name: "Bisi Adewale", email: "bisi@example.com", role: "TEACHER" as const, bio: "Native Yoruba speaker. I teach children and adults to speak, read and write Yoruba." },
+  femi: { name: "Femi Adeola", email: "femi@example.com", role: "TEACHER" as const, bio: "Session bassist. I teach beginners aged 13 and up to play in time and in a band." },
   ada: { name: "Ada Obi", email: "ada@example.com", role: "STUDENT" as const },
   kemi: { name: "Kemi Balogun", email: "kemi@example.com", role: "STUDENT" as const },
   tomi: { name: "Tomi Ajayi", email: "tomi@example.com", role: "STUDENT" as const },
 };
+
+// How many days ago each account was created.
+const JOINED: Record<keyof typeof PEOPLE, number> = { admin: 60, grace: 37, daniel: 34, ruth: 31, bisi: 33, femi: 32, ada: 28, kemi: 25, tomi: 22 };
 
 async function wipe() {
   await db.auditLog.deleteMany();
@@ -174,7 +195,7 @@ async function main() {
   const ids: Record<string, string> = {};
   for (const [key, person] of Object.entries(PEOPLE)) {
     const created = await db.user.create({
-      data: { ...person, passwordHash, status: "ACTIVE", createdAt: daysAgo(key === "admin" ? 60 : 40 - Object.keys(ids).length * 3), lastLoginAt: daysAgo(1) },
+      data: { ...person, passwordHash, status: "ACTIVE", createdAt: daysAgo(JOINED[key as keyof typeof PEOPLE]), lastLoginAt: daysAgo(1) },
     });
     ids[key] = created.id;
   }
@@ -206,7 +227,7 @@ async function main() {
   }
 
   const courses: Record<string, CreatedCourse> = {};
-  for (const course of [grammar, persuasiveEssay, algebra, fractions, dosage, infection]) {
+  for (const course of [grammar, persuasiveEssay, algebra, fractions, dosage, infection, yorubaBasics, bassGuitar]) {
     courses[course.key] = await createCourse(course, subjectIds, ids);
   }
 
@@ -276,6 +297,12 @@ async function main() {
     await db.enrollment.create({ data: { userId: id, courseId: courses[openCourses[i % openCourses.length]].id, createdAt: daysAgo(RECENT_STUDENTS[i][1]) } });
   }
 
+  await enrol("funmi", "yoruba", 9);
+  await completeLessons(ids.funmi, courses.yoruba, 2, 8);
+  await quizAttempt(ids.funmi, courses.yoruba, 4, daysAgo(5));
+  await enrol("ibrahim", "bass", 7);
+  await completeLessons(ids.ibrahim, courses.bass, 1, 6);
+
   // Teacher directory: topics, profiles, requests, sessions, messages, reviews.
   const extraTeachers = await seedTeachers(db, ids, subjectIds, passwordHash);
 
@@ -283,7 +310,7 @@ async function main() {
   await db.announcement.create({
     data: {
       title: "Welcome to the new term",
-      body: "English, Mathematics and Nursing courses are open. Enrol in as many as you like; it's free.",
+      body: "Courses in English, Mathematics, Nursing, Yoruba and Music are open. Enrol in as many as you like; it's free.",
       audience: "EVERYONE",
       authorId: ids.admin,
       createdAt: daysAgo(7),
@@ -305,9 +332,13 @@ async function main() {
     { action: "user.approve", entity: "user", entityId: ids.grace, summary: "Approved teacher: Grace Adeyemi", createdAt: daysAgo(35) },
     { action: "user.approve", entity: "user", entityId: ids.daniel, summary: "Approved teacher: Daniel Okafor", createdAt: daysAgo(34) },
     { action: "user.approve", entity: "user", entityId: ids.ruth, summary: "Approved teacher: Ruth Mensah", createdAt: daysAgo(33) },
+    { action: "user.approve", entity: "user", entityId: ids.bisi, summary: "Approved teacher: Bisi Adewale", createdAt: daysAgo(31) },
+    { action: "user.approve", entity: "user", entityId: ids.femi, summary: "Approved teacher: Femi Adeola", createdAt: daysAgo(31) },
     { action: "course.approve", entity: "course", entityId: courses.grammar.id, summary: "Approved and published: Grammar that holds up", createdAt: daysAgo(28) },
     { action: "course.approve", entity: "course", entityId: courses.algebra.id, summary: "Approved and published: Algebra from the ground up", createdAt: daysAgo(28) },
     { action: "course.approve", entity: "course", entityId: courses.dosage.id, summary: "Approved and published: Medication dosage calculations", createdAt: daysAgo(27) },
+    { action: "course.approve", entity: "course", entityId: courses.yoruba.id, summary: "Approved and published: Speak Yoruba: first conversations", createdAt: daysAgo(27) },
+    { action: "course.approve", entity: "course", entityId: courses.bass.id, summary: "Approved and published: Bass guitar: your first grooves", createdAt: daysAgo(27) },
     { action: "announcement.post", entity: "announcement", entityId: null, summary: "Posted announcement: Welcome to the new term", createdAt: daysAgo(7) },
   ];
   for (const entry of log) await db.auditLog.create({ data: { ...entry, actorId: ids.admin } });

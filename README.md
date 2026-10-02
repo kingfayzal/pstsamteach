@@ -1,12 +1,12 @@
-# SamTeach
+# Xcel Study
 
-A teaching platform for **English, Mathematics and Nursing** with three sides:
+Xcel Study (*Learning with ease*) is a tutoring and teaching platform. Admins manage the subjects; the demo data has **Mathematics, English, Yoruba, Music (bass guitar) and Nursing**. It has three sides:
 
 - **Students** choose their own teacher from a directory (filter by subject, topic, language, day and time of day; read profiles, watch intro videos, check the availability timetable and reviews). They send a request, book live one-to-one sessions once accepted, and message their teacher. They can also enrol in courses, work through lessons, take auto-marked quizzes, hand in written assignments, and see grades and feedback.
 - **Teachers** apply to teach, build a directory profile (photo, headline, about, teaching style, qualifications, topics, languages, intro video, meeting link, weekly availability), accept or decline student requests, run one-to-one sessions, and message students. They also build courses, submit them for review, mark submitted work, post announcements, and follow each student's progress.
 - **Admins** (the platform owners) approve teachers, moderate the teacher directory (hide profiles or reviews), manage subjects and their topics, review and publish courses, suspend accounts, post platform-wide announcements, and read the activity log and platform numbers.
 
-> "SamTeach" is a working name taken from the repository. Change it in `src/lib/site.ts`.
+> The name, tagline and public contact details live in `src/lib/site.ts` (overridable with `SITE_NAME`, `SUPPORT_EMAIL` and `SUPPORT_PHONE`). The logo mark is in `src/components/brand/wordmark.tsx`, and the favicon, Apple icon and social-share image are `icon.svg`, `apple-icon.png` and `opengraph-image.png` in `src/app/`. The repository keeps its original name, `pstsamteach`.
 
 ## Quick start
 
@@ -28,6 +28,7 @@ No Docker? Any Postgres works: point `DATABASE_URL` and `DIRECT_URL` in `.env` a
 | --- | --- |
 | Admin | `admin@example.com` |
 | Teachers (English, Maths, Nursing) | `grace@`, `daniel@`, `ruth@example.com`, plus `blessing@`, `kwame@`, `amaka@`, `yusuf@example.com` |
+| Teachers (Yoruba, Music) | `bisi@`, `femi@example.com` |
 | Pending teacher application | `samuel@example.com` |
 | Students | `ada@` (working with Ruth, waiting on Daniel), `kemi@`, `tomi@example.com` (plus 8 recent sign-ups) |
 
@@ -117,9 +118,8 @@ The free tiers of both are enough for an MVP. You need a GitHub account with acc
    | --- | --- |
    | `DATABASE_URL` | Supabase transaction pooler string |
    | `DIRECT_URL` | Supabase session pooler string |
-   | `SITE_NAME` | The brand shown in the app |
-   | `SUPPORT_EMAIL` | Where users should write for help |
    | `DATABASE_CA_CERT` | Optional, see above |
+   | `SITE_NAME`, `SUPPORT_EMAIL`, `SUPPORT_PHONE` | Optional. Leave unset to use Xcel Study's own name and contact details |
 
 3. In **Settings → Functions**, set the function region to the one nearest your Supabase region. Every page makes several database queries, so a long hop between the two slows everything down.
 4. Deploy. Production builds apply any new migrations (`prisma migrate deploy`) before building. Preview deployments skip migrations and, without database variables of their own, can't reach a database. Give previews a second Supabase project if you want them to work.
@@ -157,4 +157,4 @@ Production follows a switch in the repo: `DEMO_DATA_ON_PRODUCTION` in `scripts/d
 - **Notifications.** New requests, messages and bookings show as in-app badges only; email or SMS needs a provider.
 - **Email.** No verification, password reset or notification emails yet. Needs an email provider.
 - **File uploads.** Assignments are typed answers. Teacher photos are stored in the database (2 MB cap), which is fine at this scale; move them to object storage later.
-- **Brand.** The name and support email in `src/lib/site.ts` are placeholders.
+- **Domain.** Xcel Study's Facebook page lists `xcel-study.com`, while the scope of work says `excelstudy.com`. Confirm which one before adding it in Vercel.

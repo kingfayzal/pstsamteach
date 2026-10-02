@@ -77,7 +77,7 @@ first for logic, 80% coverage target on `lib/` and `server/`.
 
 ## Risks / decisions to revisit
 
-- Brand name is a placeholder (`src/lib/site.ts`). Rename in one place.
+- Brand is Xcel Study (`src/lib/site.ts`, mark in `src/components/brand/wordmark.tsx`). Name and contact details change in one place.
 - No payments in v1 — pricing isn't decided. Enrolment is free.
 - Rate limits are counters in Postgres (one atomic upsert per hit), so they hold across serverless instances. Move to Redis only if that table gets hot.
 - Lesson content is Markdown (no raw HTML). Video embeds limited to YouTube/Vimeo.

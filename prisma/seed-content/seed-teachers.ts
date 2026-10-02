@@ -131,6 +131,12 @@ export async function seedTeachers(db: ReturnType<typeof createPrismaClient>, id
   await session(halimaBlessing.id, "blessing", pastAt(1, 8, "Africa/Lagos"));
   const emekaYusuf = await connect("emeka", "yusuf", "ACTIVE", "Arithmetic", "Going back to college and need to brush up on percentages.", 6);
   await session(emekaYusuf.id, "yusuf", pastAt(3, 10, "Africa/Lagos"));
+  const funmiBisi = await connect("funmi", "bisi", "ACTIVE", "Greetings and conversation", "My parents speak Yoruba at home. I understand most of it but always answer in English, and I want to reply in Yoruba.", 10);
+  await session(funmiBisi.id, "bisi", pastAt(6, 18, "America/New_York"), "CONFIRMED", "Greetings and respect");
+  const bisiSlots = openSlots(spec("bisi"));
+  if (bisiSlots[0]) await session(funmiBisi.id, "bisi", bisiSlots[0].start, "CONFIRMED", "The three tones");
+  const ibrahimFemi = await connect("ibrahim", "femi", "ACTIVE", "Bass guitar", "I just bought my first bass and want to play in my church band by Christmas.", 8);
+  await session(ibrahimFemi.id, "femi", pastAt(5, 19, "America/New_York"), "CONFIRMED", "Tuning and your first groove");
   await connect("funmi", "amaka", "DECLINED", "Maternal and child health", "Midwifery student looking for weekly help.", 5, {
     responseNote: "I'm full on the evenings you need. Ruth Mensah teaches on Saturdays and would be a great fit.",
   });
@@ -143,6 +149,8 @@ export async function seedTeachers(db: ReturnType<typeof createPrismaClient>, id
     ["chidi", "kwame", 4, "Knows statistics inside out. Sessions are long but worth it for working through full exam questions."],
     ["halima", "blessing", 5, "The interview role-plays were exactly what I needed. I got the job!"],
     ["emeka", "yusuf", 4, "Patient and uses everyday examples. Percentages finally clicked."],
+    ["funmi", "bisi", 5, "I greeted my grandmother in Yoruba on the phone and she was so happy. Bisi corrects my tones without ever making me feel silly."],
+    ["ibrahim", "femi", 5, "I played a full groove along with a drum track in my first lesson. Femi breaks everything down until it's easy."],
   ];
   for (const [student, teacher, rating, body] of reviews) {
     await db.teacherReview.create({ data: { studentId: ids[student], teacherId: teacherIds[teacher], rating, body, createdAt: new Date(Date.now() - 1 * DAY) } });

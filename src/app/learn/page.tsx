@@ -66,7 +66,7 @@ export default async function StudentDashboard(props: PageProps<"/learn">) {
         <Section title="Continue learning" actions={courses.length > inProgress.length ? <Link href="/learn/courses" className="text-base font-bold underline decoration-rule underline-offset-4">All my courses</Link> : null}>
           {inProgress.length === 0 ? (
             <EmptyState title={courses.length ? "You've finished everything you enrolled in" : "You haven't enrolled in a course yet"} action={<LinkButton href="/courses">Browse courses</LinkButton>}>
-              Courses are free. Pick one in English, Mathematics or Nursing.
+              Courses are free. Pick one in any subject to get started.
             </EmptyState>
           ) : (
             <ul className="border-t border-rule">

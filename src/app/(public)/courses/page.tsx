@@ -8,7 +8,7 @@ import { listActiveSubjects, listCatalog } from "@/server/queries/catalog";
 
 export const metadata: Metadata = {
   title: "Courses",
-  description: "Browse courses in English, Mathematics and Nursing.",
+  description: "Browse courses with lessons, quizzes and assignments marked by real teachers.",
 };
 
 function first(value: string | string[] | undefined): string | undefined {

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { LinkButton } from "@/components/ui/button";
+import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Teach with us",
-  description: "Apply to teach English, Mathematics or Nursing. Write lessons, set work, and mark it.",
+  description: `Apply to teach with ${SITE.name}. Write lessons, set work, and mark it.`,
 };
 
 const STEPS = [
@@ -19,7 +20,7 @@ export default function TeachWithUsPage() {
       <div className="max-w-[44rem] space-y-5">
         <h1 className="text-5xl leading-[0.98] tracking-[-0.04em] text-ink">Teach what you know.</h1>
         <p className="text-xl text-ink-soft">
-          We&rsquo;re starting with English, Mathematics and Nursing. If you teach one of them, you can publish a course, set work for your students, and mark it, all in one place.
+          If you teach one of our subjects, you can meet students one to one, publish a course, set work, and mark it, all in one place.
         </p>
         <LinkButton href="/apply">Apply to teach</LinkButton>
       </div>

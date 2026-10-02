@@ -1,14 +1,34 @@
 import Link from "next/link";
 import { SITE } from "@/lib/site";
 
-/** The name, signed off with a teacher's tick. */
+/** The Xcel Study mark: a bookmark holding a star, in the brand's navy and blue. */
+export function BrandMark({ className = "" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 200 190" className={className} fill="none">
+      <path
+        d="M79 30H33c-8 0-14 6-14 14v118c0 8 7 13 14 9l67-37 67 37c7 4 14-1 14-9V44c0-8-6-14-14-14h-46"
+        stroke="var(--color-brand-navy)"
+        strokeWidth="14"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M100 12l17 38 42 5-31 28 8 42-36-21-36 21 8-42-31-28 42-5z"
+        fill="var(--color-brand)"
+        stroke="var(--color-brand)"
+        strokeWidth="4"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** The mark and the name. */
 export function Wordmark({ href = "/", className = "" }: { href?: string; className?: string }) {
   return (
-    <Link href={href} className={`group inline-flex items-end gap-1 text-ink ${className}`} aria-label={`${SITE.name} home`}>
+    <Link href={href} className={`inline-flex items-center gap-2 text-ink ${className}`} aria-label={`${SITE.name} home`}>
+      <BrandMark className="h-7 w-auto shrink-0" />
       <span className="text-2xl leading-none font-extrabold tracking-[-0.035em]">{SITE.name}</span>
-      <svg aria-hidden="true" viewBox="0 0 28 24" className="mb-1 h-4 w-5 text-tick" fill="none">
-        <path d="M2.5 13.2c2.3 1.4 4.6 4 6 7.3C12.8 12.1 18.6 5.6 25.5 2" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
     </Link>
   );
 }

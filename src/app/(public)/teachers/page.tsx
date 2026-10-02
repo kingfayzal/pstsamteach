@@ -9,7 +9,7 @@ import { listDirectory, listSubjectsWithTopics } from "@/server/queries/teachers
 
 export const metadata: Metadata = {
   title: "Find a teacher",
-  description: "Browse approved teachers in English, Mathematics and Nursing, and choose the one you connect with.",
+  description: "Browse approved teachers by subject, language and time, and choose the one you connect with.",
 };
 
 export default async function TeachersPage(props: PageProps<"/teachers">) {

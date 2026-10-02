@@ -3,7 +3,7 @@
  * only; the seed refuses to run against a remote database.
  */
 
-export const TOPICS: Record<"english" | "mathematics" | "nursing", string[]> = {
+export const TOPICS: Record<"english" | "mathematics" | "nursing" | "yoruba" | "music", string[]> = {
   english: ["Grammar and punctuation", "Essay writing", "Reading comprehension", "Spoken English", "IELTS preparation", "Business English"],
   mathematics: ["Arithmetic", "Algebra", "Geometry", "Statistics", "Calculus", "Exam preparation"],
   nursing: [
@@ -14,6 +14,8 @@ export const TOPICS: Record<"english" | "mathematics" | "nursing", string[]> = {
     "Licensing exam preparation",
     "Maternal and child health",
   ],
+  yoruba: ["Greetings and conversation", "Tones and pronunciation", "Reading and writing", "Yoruba for children", "Proverbs and culture"],
+  music: ["Bass guitar", "Rhythm and timing", "Reading tab and notation", "Music theory"],
 };
 
 type Window = { weekday: number; startMinute: number; endMinute: number };
@@ -93,6 +95,44 @@ export const TEACHERS: TeacherSeed[] = [
     sessionMinutes: 60,
     acceptingStudents: true,
     windows: days([1, 2, 3, 4, 5], h(16), h(19)),
+  },
+  {
+    key: "bisi",
+    name: "Bisi Adewale",
+    email: "bisi@example.com",
+    isExisting: true,
+    headline: "Native Yoruba speaker teaching children and adults to speak it with confidence",
+    about:
+      "I grew up in Ibadan speaking Yoruba at home and English at school, and I've taught Yoruba for nine years, first in Nigeria and now online to families in the US and the UK.\n\nMany of my students understand some Yoruba from their parents but freeze when they try to speak it. We fix that with real conversation from the first lesson, and we learn to read and write it properly, tone marks included.",
+    teachingStyle:
+      "Lessons are mostly spoken. We practise greetings and everyday phrases out loud, listen for the tones, then write a few lines together. Children learn through songs, stories and games.",
+    qualifications: "BA Yoruba Language and Literature\nPGDE (languages)",
+    experienceYears: 9,
+    languages: ["Yoruba", "English"],
+    topics: [{ subject: "yoruba", names: ["Greetings and conversation", "Tones and pronunciation", "Reading and writing", "Yoruba for children"] }],
+    timeZone: "America/New_York",
+    sessionMinutes: 60,
+    acceptingStudents: true,
+    windows: [...days([1, 3, 4], h(17), h(20)), ...days([6], h(9), h(13))],
+  },
+  {
+    key: "femi",
+    name: "Femi Adeola",
+    email: "femi@example.com",
+    isExisting: true,
+    headline: "Bass guitar from your first note to your first band",
+    about:
+      "I've played bass in church bands, wedding bands and recording sessions for fourteen years, and taught teenagers and adults for the last six.\n\nYou don't need to read music to start. We begin with tab and your ears, and you'll play a real groove in your first lesson. Students aged 13 and above are welcome.",
+    teachingStyle:
+      "A short warm-up, one new technique, then we play along to a real song together. You'll leave each lesson with a practice plan for the week and a backing track to play over.",
+    qualifications: "Diploma in Music Performance\nProfessional session and live bassist",
+    experienceYears: 6,
+    languages: ["English", "Yoruba"],
+    topics: [{ subject: "music", names: ["Bass guitar", "Rhythm and timing", "Reading tab and notation"] }],
+    timeZone: "America/New_York",
+    sessionMinutes: 60,
+    acceptingStudents: true,
+    windows: [...days([2, 4], h(18), h(21)), ...days([0], h(14), h(18))],
   },
   {
     key: "blessing",

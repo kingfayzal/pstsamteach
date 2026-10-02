@@ -59,7 +59,7 @@ export function AppShell({ area, home, nav, user, children }: Props) {
       <header className="border-b border-rule px-4 py-3 lg:hidden">
         <details className="group">
           <summary className="flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden">
-            <span className="flex items-baseline gap-3">
+            <span className="flex items-center gap-3">
               <Wordmark href={home} />
               <span className="text-sm text-muted">{area}</span>
             </span>

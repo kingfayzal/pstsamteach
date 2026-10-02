@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { homePathFor } from "@/lib/routes";
-import { SITE } from "@/lib/site";
+import { SITE, telHref } from "@/lib/site";
 import type { Actor } from "@/server/services/result";
 import { Wordmark } from "@/components/brand/wordmark";
 import { LinkButton } from "@/components/ui/button";
@@ -47,6 +47,12 @@ export function PublicFooter() {
         <div className="space-y-2">
           <Wordmark />
           <p className="max-w-[36ch] text-sm text-muted">{SITE.description}</p>
+          <p className="text-sm text-muted">
+            Text or call{" "}
+            <a href={telHref(SITE.supportPhone)} className="font-bold whitespace-nowrap text-ink-soft hover:text-ink">
+              {SITE.supportPhone}
+            </a>
+          </p>
         </div>
         <nav aria-label="Learners" className="space-y-2 text-sm">
           <p className="font-bold text-ink">Learners</p>

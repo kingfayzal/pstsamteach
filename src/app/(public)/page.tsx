@@ -38,7 +38,7 @@ export default async function HomePage() {
             Get it marked.
           </h1>
           <p className="max-w-[46ch] text-xl leading-relaxed text-ink-soft">
-            English, Mathematics and Nursing with a teacher you choose yourself: live one-to-one sessions, courses, and work that comes back marked.
+            One-to-one lessons with a teacher you choose yourself, at times that suit your schedule. Live sessions, courses, and work that comes back marked.
           </p>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
             <LinkButton href="/teachers">Find your teacher</LinkButton>

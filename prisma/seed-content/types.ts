@@ -8,8 +8,8 @@ export type SeedLesson = { title: string; minutes: number; body: string; videoUr
 
 export type SeedCourse = {
   key: string;
-  subject: "english" | "mathematics" | "nursing";
-  teacher: "grace" | "daniel" | "ruth";
+  subject: "english" | "mathematics" | "nursing" | "yoruba" | "music";
+  teacher: "grace" | "daniel" | "ruth" | "bisi" | "femi";
   title: string;
   summary: string;
   description: string;

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/ui/layout";
 import { formatDate } from "@/lib/format";
-import { SITE } from "@/lib/site";
+import { SITE, telHref } from "@/lib/site";
 import { requireRole } from "@/server/auth/session";
 import { getOwnApplication } from "@/server/queries/teacher";
 
@@ -37,6 +37,10 @@ export default async function PendingPage() {
           Questions? Email{" "}
           <a href={`mailto:${SITE.supportEmail}`} className="font-bold text-ink underline decoration-rule underline-offset-4">
             {SITE.supportEmail}
+          </a>{" "}
+          or text or call{" "}
+          <a href={telHref(SITE.supportPhone)} className="font-bold whitespace-nowrap text-ink underline decoration-rule underline-offset-4">
+            {SITE.supportPhone}
           </a>
           .
         </p>
