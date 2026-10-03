@@ -6,7 +6,7 @@ Xcel Study (*Learning with ease*) is a tutoring and teaching platform. Admins ma
 - **Teachers** apply to teach, build a directory profile (photo, headline, about, teaching style, qualifications, topics, languages, intro video, meeting link, weekly availability), accept or decline student requests, run one-to-one sessions, and message students. They also build courses, submit them for review, mark submitted work, post announcements, and follow each student's progress.
 - **Admins** (the platform owners) approve teachers, moderate the teacher directory (hide profiles or reviews), manage subjects and their topics, review and publish courses, suspend accounts, post platform-wide announcements, and read the activity log and platform numbers.
 
-> The name, tagline and public contact details live in `src/lib/site.ts` (the contact details are overridable with `SUPPORT_EMAIL` and `SUPPORT_PHONE`). The logo mark is in `src/components/brand/wordmark.tsx`, and the favicon, Apple icon and social-share image are `icon.svg`, `apple-icon.png` and `opengraph-image.png` in `src/app/`. The repository keeps its original name, `pstsamteach`.
+> The name, tagline, production URL and public contact details live in `src/lib/site.ts` (the contact details are overridable with `SUPPORT_EMAIL` and `SUPPORT_PHONE`). The logo mark is in `src/components/brand/wordmark.tsx`, and the favicon, Apple icon and social-share image are `icon.svg`, `apple-icon.png` and `opengraph-image.png` in `src/app/`. Every page shares that one logo image, loaded from the production URL. The repository keeps its original name, `pstsamteach`.
 
 ## Quick start
 

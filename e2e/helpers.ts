@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { type APIRequestContext, expect, type Page } from "@playwright/test";
 
 export const DEMO = {
   admin: "admin@example.com",
@@ -31,6 +31,24 @@ export async function logOut(page: Page): Promise<void> {
 /** Form-level error, scoped to the page so Next's route announcer (also role=alert) is ignored. */
 export function formAlert(page: Page) {
   return page.locator("main").getByRole("alert");
+}
+
+/**
+ * Link previews (WhatsApp, Facebook, X, iMessage) must show the Xcel Study logo from the
+ * production domain. A broken or missing og:image makes them fall back to the first
+ * <img> on the page, which is often a teacher's photo.
+ */
+export async function expectBrandShareImage(page: Page, request: APIRequestContext): Promise<void> {
+  const og = await page.locator('meta[property="og:image"]').getAttribute("content");
+  const url = new URL(og ?? "");
+  expect(url.origin).toBe("https://www.xcelstudy.com");
+  expect(url.pathname).toBe("/opengraph-image.png");
+  await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute("content", og ?? "");
+  await expect(page.locator('meta[property="og:site_name"]')).toHaveAttribute("content", "Xcel Study");
+
+  const image = await request.get(`${url.pathname}${url.search}`);
+  expect(image.status()).toBe(200);
+  expect(image.headers()["content-type"]).toBe("image/png");
 }
 
 /** Pre-set the time-zone cookie TimeZoneSync would write, so the first render is already local. */

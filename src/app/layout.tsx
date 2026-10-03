@@ -20,9 +20,13 @@ const kalam = Kalam({
   display: "swap",
 });
 
+// The share image is opengraph-image.png beside this file. Pages set only a
+// title and description: an `openGraph` object on a page would drop the image.
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE.url),
   title: { default: `${SITE.name}: ${SITE.tagline}`, template: `%s | ${SITE.name}` },
   description: SITE.description,
+  openGraph: { type: "website", siteName: SITE.name, locale: "en_GB" },
 };
 
 export const viewport: Viewport = {

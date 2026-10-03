@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { DEMO, formAlert, logIn, useLagosTime } from "./helpers";
+import { DEMO, expectBrandShareImage, formAlert, logIn, useLagosTime } from "./helpers";
 
 // A valid 1x1 transparent PNG.
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
@@ -147,6 +147,8 @@ test("a teacher edits their profile, availability and photo", async ({ page, req
   const response = await request.get(src ?? "");
   expect(response.status()).toBe(200);
   expect(response.headers()["content-type"]).toBe("image/png");
+  // Sharing the profile still shows the logo, not the new photo.
+  await expectBrandShareImage(page, request);
 
   // Non-images are refused.
   await page.goto("/teach/profile");

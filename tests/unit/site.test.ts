@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { telHref } from "@/lib/site";
+import { SITE, telHref } from "@/lib/site";
+
+describe("SITE.url", () => {
+  it("is a bare https origin, so share-image URLs resolve against the site root", () => {
+    const url = new URL(SITE.url);
+    expect(url.protocol).toBe("https:");
+    expect(url.origin).toBe(SITE.url);
+  });
+});
 
 describe("telHref", () => {
   it("keeps only the digits and a leading plus", () => {

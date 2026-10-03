@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { DEMO, formAlert, logIn } from "./helpers";
+import { DEMO, expectBrandShareImage, formAlert, logIn } from "./helpers";
 
 test.describe("public site", () => {
   test("home page shows the promise and the three subjects", async ({ page }) => {
@@ -27,6 +27,13 @@ test.describe("public site", () => {
     await page.goto("/courses/medication-dosage-calculations");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Medication dosage calculations");
     await expect(page.getByRole("link", { name: "Create an account to enrol" })).toBeVisible();
+  });
+
+  test("every public page shares the logo, never a teacher's photo", async ({ page, request }) => {
+    for (const path of ["/", "/teachers", "/teachers/ruth-mensah", "/courses", "/courses/medication-dosage-calculations", "/teach-with-us"]) {
+      await page.goto(path);
+      await expectBrandShareImage(page, request);
+    }
   });
 
   test("drafts and courses in review are not public", async ({ page }) => {
