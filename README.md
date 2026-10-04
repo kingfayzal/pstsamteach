@@ -129,7 +129,7 @@ The free tiers of both are enough for an MVP. You need a GitHub account with acc
    | `SUPPORT_EMAIL`, `SUPPORT_PHONE` | Optional. Leave unset to use Xcel Study's public contact details |
 
 3. In **Settings → Functions**, set the function region to the one nearest your Supabase region. Every page makes several database queries, so a long hop between the two slows everything down.
-4. Deploy. Production builds apply any new migrations (`prisma migrate deploy`) before building. Preview deployments skip migrations and, without database variables of their own, can't reach a database. Give previews a second Supabase project if you want them to work.
+4. Deploy. Production builds apply any new migrations (`prisma migrate deploy`) before building. Preview deployments skip migrations and, without database variables of their own, can't reach a database. The `dev` branch gets its own database as staging (step 6).
 
 ### 3. First admin
 
@@ -159,6 +159,28 @@ Production follows a switch in the repo: `DEMO_DATA_ON_PRODUCTION` in `scripts/d
 4. Join a session from two devices to check it. Keep teachers' meeting links filled in: they're the in-room backup.
 
 To move to a self-hosted LiveKit server later, change `LIVEKIT_URL` (and the key pair). Nothing else changes.
+
+### 6. Staging: the `dev` branch
+
+`dev` deploys to its own Vercel Preview with its own database, so every change can be tried before it reaches production.
+
+1. Create a second Supabase project (for example `xcel-study-staging`), in the same region, and copy its two pooler strings as in step 1.
+2. In Vercel, add variables scoped to **Preview** and the Git branch **`dev`** (pick the branch when adding each one):
+
+   | Variable | Value |
+   | --- | --- |
+   | `DATABASE_URL`, `DIRECT_URL` | The staging project's pooler strings, never production's |
+   | `MIGRATE_ON_DEPLOY` | `1`: lets this branch's deploys apply migrations and the demo data switch to the staging database |
+   | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | Optional: a second LiveKit project's, so staging calls never mix with production's |
+
+3. Optional: under **Settings → Domains**, give `dev` a stable address such as `staging.xcelstudy.com`, and under **Settings → Deployment Protection** keep previews behind Vercel login. A protected preview can't receive LiveKit webhooks, so attendance isn't recorded on staging unless you add a protection bypass for them.
+
+## Branches and releases
+
+- **`main`** is production: Vercel deploys it to the live site. It only changes through a pull request from `dev` (a release) or an urgent fix.
+- **`dev`** is staging: features are integrated and tested there first (step 6).
+- **Work** happens on short-lived branches cut from `dev` (`feat/…`, `fix/…`, `chore/…`) and merged back with a pull request once CI passes. CI runs on every pull request and on pushes to `main` and `dev`.
+- **Urgent fixes** branch from `main`, go to `main` by pull request, and are merged back into `dev`.
 
 ### Before real users arrive
 

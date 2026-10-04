@@ -15,7 +15,8 @@ const RTC_UDP_PORT = 7982;
 
 // Media ports must be the same inside and outside the container: browsers are
 // told to send to 127.0.0.1 on whatever port LiveKit itself listens on.
-const config = `port: ${HTTP_PORT}\nrtc:\n  tcp_port: ${RTC_TCP_PORT}\n  udp_port: ${RTC_UDP_PORT}\n`;
+// Warnings and errors only: dev mode's debug logging would bury test failures in CI.
+const config = `port: ${HTTP_PORT}\nrtc:\n  tcp_port: ${RTC_TCP_PORT}\n  udp_port: ${RTC_UDP_PORT}\nlogging:\n  level: warn\n`;
 
 if (!process.env.LIVEKIT_KEYS) {
   console.error("LIVEKIT_KEYS is not set; run this through `npm run test:e2e`.");
