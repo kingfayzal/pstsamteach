@@ -4,7 +4,9 @@ import { slugify } from "@/lib/slug";
 import { subjectSchema } from "@/lib/validation/admin";
 import { revokeUserSessions } from "@/server/auth/session-store";
 import { db } from "@/server/db";
+import { getVideoProvider, type VideoProvider } from "@/server/video";
 import { recordAudit } from "./audit";
+import { closeLiveRooms } from "./live-sessions";
 import { type Actor, fail, forbidden, invalid, isActiveRole, notFound, ok, type ServiceResult } from "./result";
 
 const ROLES: readonly Role[] = ["STUDENT", "TEACHER", "ADMIN"];
@@ -48,7 +50,12 @@ export async function declineTeacher(actor: Actor, userId: string): Promise<Serv
   return ok(null);
 }
 
-export async function suspendUser(actor: Actor, userId: string): Promise<ServiceResult<null>> {
+export async function suspendUser(
+  actor: Actor,
+  userId: string,
+  now = new Date(),
+  provider: VideoProvider | null = getVideoProvider(),
+): Promise<ServiceResult<null>> {
   const loaded = await loadOtherUser(actor, userId);
   if (!loaded.ok) return loaded;
   if (loaded.data.status === "SUSPENDED") return ok(null);
@@ -57,6 +64,8 @@ export async function suspendUser(actor: Actor, userId: string): Promise<Service
     await recordAudit(tx, { actorId: actor.id, action: "user.suspend", entity: "user", entityId: userId, summary: `Suspended: ${loaded.data.name}` });
   });
   await revokeUserSessions(userId);
+  // Signing out isn't enough for a call already under way: close their open video rooms too.
+  await closeLiveRooms({ userId }, now, provider);
   return ok(null);
 }
 

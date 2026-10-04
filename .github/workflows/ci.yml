@@ -66,6 +66,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      # The video room tests start this image (scripts/e2e-livekit.mjs); pulling first keeps that within its start-up timeout.
+      - run: docker pull livekit/livekit-server:v1.13.7
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()

@@ -10,6 +10,14 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = 3100;
 const DATABASE_URL = process.env.E2E_DATABASE_URL ?? "postgresql://postgres@localhost:5432/pstsamteach_e2e";
 
+/**
+ * Video rooms use a throwaway LiveKit server in Docker (scripts/e2e-livekit.mjs)
+ * with an API key made up for this run, like the password.
+ */
+const LIVEKIT_URL = "ws://127.0.0.1:7980";
+const LIVEKIT_KEY = "e2e";
+process.env.E2E_LIVEKIT_SECRET ??= randomBytes(32).toString("hex");
+
 // Workers re-evaluate this file; only the main process prepares the database.
 if (!process.env.E2E_PASSWORD) {
   process.env.E2E_PASSWORD = `e2e-${randomBytes(8).toString("base64url")}-1`;
@@ -20,6 +28,7 @@ if (!process.env.E2E_PASSWORD) {
 
 export default defineConfig({
   testDir: "./e2e",
+  globalTeardown: "./e2e/global-teardown.ts",
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
@@ -40,14 +49,33 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         // Locally, use the installed Chrome so no browser download is needed.
         channel: process.env.PW_CHANNEL ?? (process.env.CI ? undefined : "chrome"),
+        // A generated camera and microphone, with no permission prompt, for the video room tests.
+        launchOptions: { args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"] },
       },
     },
   ],
-  webServer: {
-    command: `npx next build && npx next start -p ${PORT}`,
-    url: `http://localhost:${PORT}`,
-    timeout: 300_000,
-    reuseExistingServer: false,
-    env: { DATABASE_URL, DIRECT_URL: DATABASE_URL, NEXT_DIST_DIR: ".next-e2e" },
-  },
+  webServer: [
+    {
+      command: "node scripts/e2e-livekit.mjs",
+      url: LIVEKIT_URL.replace("ws:", "http:"),
+      // The first run pulls the image.
+      timeout: 180_000,
+      reuseExistingServer: false,
+      env: { LIVEKIT_KEYS: `${LIVEKIT_KEY}: ${process.env.E2E_LIVEKIT_SECRET}` },
+    },
+    {
+      command: `npx next build && npx next start -p ${PORT}`,
+      url: `http://localhost:${PORT}`,
+      timeout: 300_000,
+      reuseExistingServer: false,
+      env: {
+        DATABASE_URL,
+        DIRECT_URL: DATABASE_URL,
+        NEXT_DIST_DIR: ".next-e2e",
+        LIVEKIT_URL,
+        LIVEKIT_API_KEY: LIVEKIT_KEY,
+        LIVEKIT_API_SECRET: process.env.E2E_LIVEKIT_SECRET,
+      },
+    },
+  ],
 });

@@ -14,6 +14,7 @@ import { requireRole } from "@/server/auth/session";
 import { getViewerTimeZone } from "@/server/auth/viewer";
 import { getTeacherConnection } from "@/server/queries/connections";
 import { getProfileEditor } from "@/server/queries/teachers";
+import { isLiveVideoEnabled } from "@/server/video";
 
 export const metadata: Metadata = { title: "Student" };
 
@@ -63,6 +64,7 @@ export default async function TeacherConnectionPage(props: PageProps<"/teach/stu
               otherName={firstName}
               timeZone={timeZone}
               meetingUrl={editor?.profile.meetingUrl ?? null}
+              liveRoom={isLiveVideoEnabled()}
               returnTo={here}
               canCancel={open}
             />

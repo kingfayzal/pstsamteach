@@ -10,6 +10,7 @@ import { requireRole } from "@/server/auth/session";
 import { getViewerTimeZone } from "@/server/auth/viewer";
 import { listTeacherConnections, listUpcomingSessions } from "@/server/queries/connections";
 import { getMarkingQueue, getTeacherAnnouncements, getTeacherCourses, getTeacherStats } from "@/server/queries/teacher";
+import { isLiveVideoEnabled } from "@/server/video";
 
 export const metadata: Metadata = { title: "Teacher dashboard" };
 
@@ -21,7 +22,8 @@ export default async function TeacherDashboard() {
     getMarkingQueue(user, 5),
     getTeacherAnnouncements(3),
   ]);
-  const [sessions, students, timeZone] = await Promise.all([listUpcomingSessions(user.id, "TEACHER"), listTeacherConnections(user.id), getViewerTimeZone()]);
+  const [sessions, students, timeZone] = await Promise.all([listUpcomingSessions(user.id, "TEACHER", new Date(), { includeOpenRooms: isLiveVideoEnabled() }),
+    listTeacherConnections(user.id), getViewerTimeZone()]);
 
   return (
     <>
@@ -52,7 +54,7 @@ export default async function TeacherDashboard() {
 
         <Section title="Upcoming sessions" actions={<Link href="/teach/students" className="text-base font-bold underline decoration-rule underline-offset-4">Your students</Link>}>
           {sessions.length ? (
-            <UpcomingSessions sessions={sessions} timeZone={timeZone} linkBase="/teach/students" />
+            <UpcomingSessions sessions={sessions} timeZone={timeZone} linkBase="/teach/students" liveRoom={isLiveVideoEnabled()} />
           ) : (
             <p className="text-base text-muted">
               No live sessions booked.{" "}
