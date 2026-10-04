@@ -7,7 +7,20 @@ import type { createPrismaClient } from "../src/server/db-client";
 import { slugify } from "../src/lib/slug";
 
 type Db = ReturnType<typeof createPrismaClient>;
+type Tx = Parameters<Parameters<Db["$transaction"]>[0]>[0];
 type Window = { weekday: number; startMinute: number; endMinute: number };
+type Role = "ADMIN" | "TEACHER" | "STUDENT";
+type TeacherDetails = {
+  name: string;
+  headline: string;
+  about: string;
+  teachingStyle: string;
+  qualifications: string;
+  experienceYears: number;
+  languages: readonly string[];
+  timeZone: string;
+  windows: readonly Window[];
+};
 
 /**
  * Whether production should have the demo data. Every production deploy applies
@@ -100,7 +113,32 @@ export const DEMO_STUDENTS = [
   { name: "D-Zainab Bello", email: "d-zainab.bello@example.com", timeZone: "Africa/Lagos" },
 ] as const;
 
-const DEMO_EMAILS = [...DEMO_TEACHERS, ...DEMO_STUDENTS].map((person) => person.email);
+/**
+ * Easy-to-remember logins for showing each side of the platform. The admin is
+ * for local and staging databases only; see `addDemoLogins`.
+ */
+export const DEMO_LOGINS = [
+  { name: "Demo Student", email: "student@xceldemo.com", role: "STUDENT" },
+  { name: "Demo Teacher", email: "teacher@xceldemo.com", role: "TEACHER" },
+  { name: "Demo Admin", email: "admin@xceldemo.com", role: "ADMIN" },
+] as const satisfies ReadonlyArray<{ name: string; email: string; role: Role }>;
+
+const DEMO_LOGIN_TIME_ZONE = "Africa/Lagos";
+
+// Teaches every demo subject and is free most of the day, so the demo student can always book.
+const DEMO_LOGIN_TEACHER = {
+  headline: "Demo teacher for trying out Xcel Study",
+  about:
+    "This is a demo account for seeing how teaching on Xcel Study works: accepting requests, running live sessions and messaging students.\n\nIt can be reset at any time, so don't keep anything important here.",
+  teachingStyle: "Send a request from the demo student account, accept it here, and book a session to see both sides of a lesson.",
+  qualifications: "Demo account",
+  experienceYears: 5,
+  languages: ["English"],
+  timeZone: DEMO_LOGIN_TIME_ZONE,
+  windows: days([0, 1, 2, 3, 4, 5, 6], h(8), h(21)),
+};
+
+const DEMO_EMAILS = [...DEMO_TEACHERS, ...DEMO_STUDENTS, ...DEMO_LOGINS].map((person) => person.email);
 const DEMO_SUBJECT_SLUGS = DEMO_SUBJECTS.map((subject) => subject.slug);
 
 // Several dozen statements; generous limits so a slow remote connection doesn't time out.
@@ -113,66 +151,96 @@ const TRANSACTION = { maxWait: 10_000, timeout: 60_000 };
  */
 export async function addDemoData(db: Db, passwordHash: string): Promise<{ subjects: number; teachers: number; students: number }> {
   await db.$transaction(async (tx) => {
-    const topicIds = new Map<string, string[]>();
-    for (const [index, { topics, ...subject }] of DEMO_SUBJECTS.entries()) {
-      const fields = { ...subject, position: FIRST_POSITION + index, isActive: true };
-      const saved = await tx.subject.upsert({ where: { slug: subject.slug }, create: fields, update: fields, select: { id: true } });
-      const ids: string[] = [];
-      for (const [position, name] of topics.entries()) {
-        const topic = await tx.topic.upsert({
-          where: { subjectId_slug: { subjectId: saved.id, slug: slugify(name, "topic") } },
-          create: { subjectId: saved.id, name, slug: slugify(name, "topic"), position },
-          update: { name, position },
-          select: { id: true },
-        });
-        ids.push(topic.id);
-      }
-      topicIds.set(subject.slug, ids);
-    }
-
-    const accounts = [
-      ...DEMO_TEACHERS.map((teacher) => ({ name: teacher.name, email: teacher.email, timeZone: teacher.timeZone, role: "TEACHER" as const })),
-      ...DEMO_STUDENTS.map((student) => ({ ...student, role: "STUDENT" as const })),
-    ];
-    const userIds = new Map<string, string>();
-    for (const account of accounts) {
-      const fields = { name: account.name, role: account.role, status: "ACTIVE" as const, timeZone: account.timeZone, passwordHash };
-      const user = await tx.user.upsert({ where: { email: account.email }, create: { email: account.email, ...fields }, update: fields, select: { id: true } });
-      await tx.session.deleteMany({ where: { userId: user.id } });
-      userIds.set(account.email, user.id);
-    }
-
+    const topicIds = await upsertDemoSubjects(tx);
     for (const teacher of DEMO_TEACHERS) {
-      const userId = userIds.get(teacher.email)!;
-      const slug = slugify(teacher.name, "teacher");
-      const fields = {
-        headline: teacher.headline,
-        about: teacher.about,
-        teachingStyle: teacher.teachingStyle,
-        qualifications: teacher.qualifications,
-        experienceYears: teacher.experienceYears,
-        timeZone: teacher.timeZone,
-        sessionMinutes: 60,
-        acceptingStudents: true,
-        isHidden: false,
-        meetingUrl: `https://meet.example.com/${slug}`,
-      };
-      const topics = (topicIds.get(teacher.subject) ?? []).map((topicId) => ({ topicId }));
-      const languages = teacher.languages.map((language) => ({ language }));
-      const availability = [...teacher.windows];
-      await tx.teacherProfile.upsert({
-        where: { userId },
-        create: { userId, slug, ...fields, topics: { create: topics }, languages: { create: languages }, availability: { create: availability } },
-        update: {
-          ...fields,
-          topics: { deleteMany: {}, create: topics },
-          languages: { deleteMany: {}, create: languages },
-          availability: { deleteMany: {}, create: availability },
-        },
-      });
+      const userId = await upsertAccount(tx, { ...teacher, role: "TEACHER" }, passwordHash);
+      await upsertTeacherProfile(tx, userId, teacher, topicIds.get(teacher.subject) ?? []);
+    }
+    for (const student of DEMO_STUDENTS) {
+      await upsertAccount(tx, { ...student, role: "STUDENT" }, passwordHash);
     }
   }, TRANSACTION);
   return { subjects: DEMO_SUBJECTS.length, teachers: DEMO_TEACHERS.length, students: DEMO_STUDENTS.length };
+}
+
+/**
+ * Add the demo logins, or bring existing ones back to this definition, all with
+ * `passwordHash`. With `admin: false` (the live site) the demo admin is left
+ * out, and removed if an earlier run made it, so a guessable admin login can't
+ * stay on a public database.
+ */
+export async function addDemoLogins(db: Db, passwordHash: string, { admin }: { admin: boolean }): Promise<Array<(typeof DEMO_LOGINS)[number]>> {
+  const logins = DEMO_LOGINS.filter((login) => admin || login.role !== "ADMIN");
+  await db.$transaction(async (tx) => {
+    if (!admin) {
+      await tx.user.deleteMany({ where: { email: { in: DEMO_LOGINS.filter((login) => login.role === "ADMIN").map((login) => login.email) } } });
+    }
+    const topicIds = await upsertDemoSubjects(tx);
+    for (const login of logins) {
+      const userId = await upsertAccount(tx, { ...login, timeZone: DEMO_LOGIN_TIME_ZONE }, passwordHash);
+      if (login.role === "TEACHER") await upsertTeacherProfile(tx, userId, { name: login.name, ...DEMO_LOGIN_TEACHER }, [...topicIds.values()].flat());
+    }
+  }, TRANSACTION);
+  return logins;
+}
+
+/** Add or update the demo subjects and their topics. Returns each subject's topic ids, by slug. */
+async function upsertDemoSubjects(tx: Tx): Promise<Map<string, string[]>> {
+  const topicIds = new Map<string, string[]>();
+  for (const [index, { topics, ...subject }] of DEMO_SUBJECTS.entries()) {
+    const fields = { ...subject, position: FIRST_POSITION + index, isActive: true };
+    const saved = await tx.subject.upsert({ where: { slug: subject.slug }, create: fields, update: fields, select: { id: true } });
+    const ids: string[] = [];
+    for (const [position, name] of topics.entries()) {
+      const topic = await tx.topic.upsert({
+        where: { subjectId_slug: { subjectId: saved.id, slug: slugify(name, "topic") } },
+        create: { subjectId: saved.id, name, slug: slugify(name, "topic"), position },
+        update: { name, position },
+        select: { id: true },
+      });
+      ids.push(topic.id);
+    }
+    topicIds.set(subject.slug, ids);
+  }
+  return topicIds;
+}
+
+/** Add or update an active account with `passwordHash`, signing it out everywhere. Returns its id. */
+async function upsertAccount(tx: Tx, account: { name: string; email: string; role: Role; timeZone: string }, passwordHash: string): Promise<string> {
+  const fields = { name: account.name, role: account.role, status: "ACTIVE" as const, timeZone: account.timeZone, passwordHash };
+  const user = await tx.user.upsert({ where: { email: account.email }, create: { email: account.email, ...fields }, update: fields, select: { id: true } });
+  await tx.session.deleteMany({ where: { userId: user.id } });
+  return user.id;
+}
+
+/** Give a demo teacher a public directory profile teaching `topicIds`, replacing any earlier one. */
+async function upsertTeacherProfile(tx: Tx, userId: string, teacher: TeacherDetails, topicIds: string[]): Promise<void> {
+  const slug = slugify(teacher.name, "teacher");
+  const fields = {
+    headline: teacher.headline,
+    about: teacher.about,
+    teachingStyle: teacher.teachingStyle,
+    qualifications: teacher.qualifications,
+    experienceYears: teacher.experienceYears,
+    timeZone: teacher.timeZone,
+    sessionMinutes: 60,
+    acceptingStudents: true,
+    isHidden: false,
+    meetingUrl: `https://meet.example.com/${slug}`,
+  };
+  const topics = topicIds.map((topicId) => ({ topicId }));
+  const languages = teacher.languages.map((language) => ({ language }));
+  const availability = [...teacher.windows];
+  await tx.teacherProfile.upsert({
+    where: { userId },
+    create: { userId, slug, ...fields, topics: { create: topics }, languages: { create: languages }, availability: { create: availability } },
+    update: {
+      ...fields,
+      topics: { deleteMany: {}, create: topics },
+      languages: { deleteMany: {}, create: languages },
+      availability: { deleteMany: {}, create: availability },
+    },
+  });
 }
 
 /** True when any demo account or subject exists. */
