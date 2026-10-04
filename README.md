@@ -20,6 +20,8 @@ npm run setup        # migrate, generate the Prisma client, seed demo data
 npm run dev          # http://localhost:3000
 ```
 
+**Video sessions (optional):** put a `LIVEKIT_API_KEY` and a long random `LIVEKIT_API_SECRET` in `.env` with `LIVEKIT_URL="ws://localhost:7880"`, then `npm run livekit:up` starts a LiveKit server in Docker with the same pair. Leave the three unset and sessions use each teacher's meeting link instead.
+
 No Docker? Any Postgres works: point `DATABASE_URL` and `DIRECT_URL` in `.env` at it. `npx prisma dev` starts a throwaway local one and prints its URL. It serves one connection at a time, so also set `DATABASE_POOL_MAX=1`.
 
 `npm run setup` prints the demo accounts. They all share one password: whatever you put in `SEED_DEMO_PASSWORD` in `.env`, or a random one printed once if you leave it empty.
@@ -43,13 +45,14 @@ No Docker? Any Postgres works: point `DATABASE_URL` and `DIRECT_URL` in `.env` a
 | `npm run test:coverage` | Same, with coverage gates (80% lines/statements/functions, 75% branches) |
 | `npm run test:e2e` | Playwright end-to-end tests against a production build with its own seeded database |
 | `npm run db:up` / `npm run db:down` | Start / stop the local Postgres container |
+| `npm run livekit:up` / `npm run livekit:down` | Start / stop the local LiveKit (video) container, using the key and secret in `.env` |
 | `npm run db:migrate` | Create a migration after editing `prisma/schema.prisma` |
 | `npm run db:deploy` | Apply pending migrations (what production runs on each deploy) |
 | `npm run db:seed` / `npm run db:reset` | Reseed / wipe and rebuild the local database |
 | `npm run create-admin` | Create the first admin, or promote an account, on any database (see Deploying) |
 | `npm run demo:add` / `npm run demo:remove` | Add or remove the labelled "D-" demo subjects, teachers and students on any database by hand (production follows a switch; see Deploying) |
 
-Tests use their own databases on the same server: `pstsamteach_test` and `pstsamteach_e2e` (override with `TEST_DATABASE_URL` / `E2E_DATABASE_URL`). They're created and migrated automatically, and refuse to run against anything but a local database. Playwright uses your installed Chrome locally. In CI, GitHub Actions runs everything against a Postgres 17 service.
+Tests use their own databases on the same server: `pstsamteach_test` and `pstsamteach_e2e` (override with `TEST_DATABASE_URL` / `E2E_DATABASE_URL`). They're created and migrated automatically, and refuse to run against anything but a local database. The E2E suite also starts a throwaway LiveKit server in Docker (`scripts/e2e-livekit.mjs`, ports 7980–7982, a random key per run), so Docker must be running. Playwright uses your installed Chrome locally, with a fake camera and microphone. In CI, GitHub Actions runs everything against a Postgres 17 service.
 
 ## How it's built
 
@@ -64,23 +67,26 @@ Tests use their own databases on the same server: `pstsamteach_test` and `pstsam
 
 ```
 src/
-  app/            routes: (public), (auth), learn/, teach/, admin/, account/
-  components/     ui/, brand/, shell/, course/, forms/, admin/
+  app/            routes: (public), (auth), learn/, teach/, admin/, account/, sessions/ (video rooms), api/livekit/ (webhook)
+  components/     ui/, brand/, shell/, course/, forms/, admin/, teachers/, live/
   lib/            pure logic: grading, progress, course lifecycle, validation, video, slugs, formatting
   server/
     auth/         passwords, sessions, rate limiting
     services/     business operations, with authorization built in
     queries/      read models for pages, authorization-aware
     actions/      thin "use server" wrappers: session → service → revalidate/redirect
+    video/        the video provider adapter (LiveKit): join tokens, webhook verification
 prisma/           schema, migrations, seed and demo course content
 tests/            unit/ and integration/
 e2e/              Playwright specs
-docs/             PLAN.md (build plan), DESIGN.md (design rationale)
+docs/             PLAN.md (build plan), DESIGN.md (design rationale), adr/ (architecture decisions)
 ```
 
 **Authorization lives in the service and query layer**, not just the UI: every service takes the acting user and checks role, status and ownership itself. Things you can't manage come back as "not found", so their existence doesn't leak. Quiz answer keys never reach the browser until after a quiz is submitted (checked by an E2E test).
 
-**Choosing a teacher:** a student sends a request (with their goals and, optionally, a first session time) to a listed teacher who is taking students. The teacher accepts (the first session is confirmed) or declines with a note. Once accepted, the student books sessions from the teacher's open slots: next 14 days, 30-minute steps, at least 12 hours ahead, never clashing with either person's other sessions. Each booking runs in a transaction holding a Postgres advisory lock per person, so two students can't take the same slot at the same moment. Times are stored in UTC and shown in each viewer's own time zone. Sessions happen on the teacher's own meeting link, which is only shown on confirmed sessions.
+**Choosing a teacher:** a student sends a request (with their goals and, optionally, a first session time) to a listed teacher who is taking students. The teacher accepts (the first session is confirmed) or declines with a note. Once accepted, the student books sessions from the teacher's open slots: next 14 days, 30-minute steps, at least 12 hours ahead, never clashing with either person's other sessions. Each booking runs in a transaction holding a Postgres advisory lock per person, so two students can't take the same slot at the same moment. Times are stored in UTC and shown in each viewer's own time zone.
+
+**Live sessions** ([ADR-0001](docs/adr/0001-livekit-for-live-tutoring-video.md)): with LiveKit configured, each confirmed session has its own video room at `/sessions/<id>`, open from 10 minutes before the start to 15 minutes after the end. The server hands out a 10-minute join token only to the session's student and teacher. The room has a camera check, screen sharing, and a chat that is the pair's normal message thread, so it's saved. The teacher's meeting link stays as a "Trouble connecting?" backup. LiveKit's signed webhooks record who was in the room, and past sessions show it. Without LiveKit configured, sessions use the teacher's meeting link, shown only on confirmed sessions.
 
 **Course lifecycle:** Draft → In review (teacher submits) → Published (admin approves) → Archived. Admins can send a course back with notes, or unpublish it. Teachers can't edit a course while it's in review.
 
@@ -91,6 +97,7 @@ docs/             PLAN.md (build plan), DESIGN.md (design rationale)
 - CSRF: all mutations are Server Actions (origin-checked by Next.js); cookies are `SameSite=Lax`.
 - Rate limiting on login, sign-up, teacher requests and messages. Counters live in Postgres, so limits hold across every serverless instance.
 - Content Security Policy, `frame-ancestors 'none'`, `nosniff`, a strict referrer policy and HSTS in production. Video embeds are limited to YouTube (privacy-enhanced) and Vimeo.
+- Video rooms: join tokens are minted server-side after the same checks as every other service (party, confirmed, join window), are scoped to one two-person room, and expire in 10 minutes. Cancelling a session, ending a partnership or suspending an account closes any open room it affects. Only `/sessions/*` may use the camera, microphone and screen sharing or connect to the LiveKit host. Webhooks are rejected unless they're signed and the signature matches the raw body (capped at 64 KiB).
 - Lesson Markdown is rendered without raw HTML, and unsafe URLs are stripped.
 - Every admin action and course decision is written to an append-only activity log.
 
@@ -144,6 +151,15 @@ Production follows a switch in the repo: `DEMO_DATA_ON_PRODUCTION` in `scripts/d
 - **They're public:** the demo teachers are listed in the directory and accept requests, so real visitors can find them too. Switch the demo data off before launch.
 - **By hand:** `DATABASE_URL="<session pooler string>" npm run demo:add` (or `demo:remove`) does the same on any database, and `add` resets the demo records to their definition with a new password.
 
+### 5. Live video: LiveKit Cloud
+
+1. Create a project at [cloud.livekit.io](https://cloud.livekit.io). Under **Settings → Keys**, create an API key.
+2. In Vercel, add `LIVEKIT_URL` (the project's `wss://…livekit.cloud` address), `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`, all three or none (a partial set fails the build). Redeploy: the camera and connection rules for the room are fixed at build time.
+3. In LiveKit, under **Settings → Webhooks**, add `https://<your-domain>/api/livekit/webhook`, signed with the same API key, so attendance is recorded.
+4. Join a session from two devices to check it. Keep teachers' meeting links filled in: they're the in-room backup.
+
+To move to a self-hosted LiveKit server later, change `LIVEKIT_URL` (and the key pair). Nothing else changes.
+
 ### Before real users arrive
 
 - Supabase pauses free projects after a week without activity, and the free plan's backups are limited. Move to a paid plan before launch.
@@ -153,7 +169,8 @@ Production follows a switch in the repo: `DEMO_DATA_ON_PRODUCTION` in `scripts/d
 ## Not in v1 (decisions needed)
 
 - **Payments and pricing.** Enrolment and sessions are free; no pricing has been decided, so teacher profiles show no rates.
-- **Built-in video.** Sessions use each teacher's own Zoom/Meet/Teams link.
+- **Recording sessions.** Not until there's a consent and storage policy, since some students are minors.
+- **Video from Nigeria.** LiveKit Cloud's nearest region is Johannesburg. Measure call quality on MTN, Airtel, Glo and fibre before launch; ADR-0001 lists the fallbacks.
 - **Notifications.** New requests, messages and bookings show as in-app badges only; email or SMS needs a provider.
 - **Email.** No verification, password reset or notification emails yet. Needs an email provider.
 - **File uploads.** Assignments are typed answers. Teacher photos are stored in the database (2 MB cap), which is fine at this scale; move them to object storage later.
