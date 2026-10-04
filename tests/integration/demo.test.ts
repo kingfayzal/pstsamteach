@@ -6,6 +6,8 @@ import { listDirectory } from "@/server/queries/teachers";
 import { authenticate } from "@/server/services/accounts";
 import {
   addDemoData,
+  addDemoLogins,
+  DEMO_LOGINS,
   DEMO_STUDENTS,
   DEMO_SUBJECTS,
   DEMO_TEACHERS,
@@ -106,5 +108,65 @@ describe("demo data", { timeout: 30_000 }, () => {
 
     expect(await removeDemoData(db)).toEqual({ users: 6, subjects: 2, keptSubjects: ["D-Science"] });
     expect(await db.course.count()).toBe(1);
+  });
+});
+
+describe("demo logins", { timeout: 30_000 }, () => {
+  const emails = DEMO_LOGINS.map((login) => login.email);
+
+  it("adds a student, an admin and a listed teacher, who all sign in with the shared password", async () => {
+    await addDemoLogins(db, await hashPassword(PASSWORD), { admin: true });
+
+    const people = await db.user.findMany({ where: { email: { in: emails } }, orderBy: { email: "asc" }, select: { email: true, role: true, status: true } });
+    expect(people.map((p) => [p.email, p.role])).toEqual([
+      ["admin@xceldemo.com", "ADMIN"],
+      ["student@xceldemo.com", "STUDENT"],
+      ["teacher@xceldemo.com", "TEACHER"],
+    ]);
+    expect(people.every((p) => p.status === "ACTIVE")).toBe(true);
+    for (const email of emails) {
+      expect((await authenticate({ email, password: PASSWORD })).ok).toBe(true);
+    }
+    expect(await demoDataPresent(db)).toBe(true);
+
+    // The teacher teaches every demo subject, so the demo student can find and request them.
+    for (const subject of DEMO_SUBJECTS) {
+      const listed = await listDirectory(parseDirectoryFilters({ subject: subject.slug }), LAGOS);
+      expect(listed.map((row) => row.name)).toEqual(["Demo Teacher"]);
+    }
+  });
+
+  it("leaves the admin out for the live site, removing one made earlier", async () => {
+    await addDemoLogins(db, await hashPassword(PASSWORD), { admin: true });
+    await addDemoLogins(db, await hashPassword(PASSWORD), { admin: false });
+
+    expect((await db.user.findMany({ orderBy: { email: "asc" }, select: { email: true } })).map((u) => u.email)).toEqual([
+      "student@xceldemo.com",
+      "teacher@xceldemo.com",
+    ]);
+  });
+
+  it("can run again without duplicating anything, switching to the new password", async () => {
+    await addDemoLogins(db, await hashPassword(PASSWORD), { admin: true });
+    const student = await db.user.findUniqueOrThrow({ where: { email: "student@xceldemo.com" } });
+    await db.session.create({ data: { id: "demo-login-session", userId: student.id, expiresAt: new Date(Date.now() + 60_000) } });
+
+    await addDemoLogins(db, await hashPassword("a-different-password-2"), { admin: true });
+
+    expect(await db.user.count()).toBe(3);
+    expect(await db.subject.count()).toBe(DEMO_SUBJECTS.length);
+    expect(await db.teacherProfile.count()).toBe(1);
+    expect(await db.teacherTopic.count()).toBe(9);
+    expect(await db.session.count()).toBe(0);
+    expect((await authenticate({ email: "student@xceldemo.com", password: PASSWORD })).ok).toBe(false);
+    expect((await authenticate({ email: "student@xceldemo.com", password: "a-different-password-2" })).ok).toBe(true);
+  });
+
+  it("are removed with the rest of the demo data", async () => {
+    await addDemoData(db, await hashPassword(PASSWORD));
+    await addDemoLogins(db, await hashPassword(PASSWORD), { admin: true });
+
+    expect(await removeDemoData(db)).toEqual({ users: 9, subjects: 3, keptSubjects: [] });
+    expect(await db.user.count()).toBe(0);
   });
 });

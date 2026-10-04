@@ -150,6 +150,7 @@ Production follows a switch in the repo: `DEMO_DATA_ON_PRODUCTION` in `scripts/d
 - **Demo logins:** the emails are `d-mark.buck@example.com`, `d-chioma.okeke@example.com` and so on. All six accounts share one password, printed once in the build log of the deploy that created them (Vercel → Deployments → that deploy → Build Logs, search for "demo"). To choose it yourself instead, add a `DEMO_PASSWORD` environment variable before that deploy.
 - **They're public:** the demo teachers are listed in the directory and accept requests, so real visitors can find them too. Switch the demo data off before launch.
 - **By hand:** `DATABASE_URL="<session pooler string>" npm run demo:add` (or `demo:remove`) does the same on any database, and `add` resets the demo records to their definition with a new password.
+- **Quick logins:** `DATABASE_URL="<session pooler string>" DEMO_PASSWORD="<password>" npm run demo:logins` adds `student@`, `teacher@` and `admin@xceldemo.com`, sharing that password (the teacher teaches every demo subject, so the demo student can request and book them). Running it again resets them. On the live site add `-- --no-admin`: a guessable admin login would hand anyone the admin side, so that run leaves it out and removes one made earlier. Switching the demo data off removes these accounts too.
 
 ### 5. Live video: LiveKit Cloud
 

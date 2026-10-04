@@ -5,6 +5,9 @@
  *   npm run demo:add      (all demo accounts share one password, printed once,
  *                          or the value of DEMO_PASSWORD)
  *   npm run demo:remove
+ *   npm run demo:logins   (student@, teacher@ and admin@xceldemo.com, sharing
+ *                          the same password; add `-- --no-admin` on the live
+ *                          site, which also removes a demo admin made earlier)
  *
  * With DATABASE_URL pointing at the target database. Only the records listed
  * in scripts/demo-data.ts are touched; running `add` again resets them.
@@ -19,6 +22,7 @@ import { hashPassword } from "../src/server/auth/password-core";
 import { createPrismaClient } from "../src/server/db-client";
 import {
   addDemoData,
+  addDemoLogins,
   DEMO_DATA_ON_PRODUCTION,
   DEMO_STUDENTS,
   DEMO_SUBJECTS,
@@ -33,13 +37,17 @@ function demoPassword() {
   return { password, generated };
 }
 
-function printAdded({ password, generated }: { password: string; generated: boolean }) {
+function passwordLine({ password, generated }: { password: string; generated: boolean }) {
+  return generated ? `Password for every demo account (shown once, not saved anywhere): ${password}` : "Password for every demo account: the value of DEMO_PASSWORD.";
+}
+
+function printAdded(secret: { password: string; generated: boolean }) {
   console.log(`Demo subjects: ${DEMO_SUBJECTS.map((subject) => subject.name).join(", ")}`);
   console.log("Demo teachers:");
   for (const teacher of DEMO_TEACHERS) console.log(`  ${teacher.name}  ${teacher.email}`);
   console.log("Demo students:");
   for (const student of DEMO_STUDENTS) console.log(`  ${student.name}  ${student.email}`);
-  console.log(generated ? `Password for every demo account (shown once, not saved anywhere): ${password}` : "Password for every demo account: the value of DEMO_PASSWORD.");
+  console.log(passwordLine(secret));
 }
 
 function printRemoved(removed: { users: number; subjects: number; keptSubjects: string[] }) {
@@ -51,8 +59,8 @@ function printRemoved(removed: { users: number; subjects: number; keptSubjects: 
 
 async function main() {
   const command = process.argv[2];
-  if (command !== "add" && command !== "remove" && command !== "sync") {
-    throw new Error("Use `npm run demo:add` or `npm run demo:remove`.");
+  if (command !== "add" && command !== "remove" && command !== "sync" && command !== "logins") {
+    throw new Error("Use `npm run demo:add`, `npm run demo:logins` or `npm run demo:remove`.");
   }
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set.");
@@ -66,6 +74,14 @@ async function main() {
       const secret = demoPassword();
       await addDemoData(db, await hashPassword(secret.password));
       printAdded(secret);
+    } else if (command === "logins") {
+      const secret = demoPassword();
+      const admin = !process.argv.includes("--no-admin");
+      const logins = await addDemoLogins(db, await hashPassword(secret.password), { admin });
+      console.log("Demo logins:");
+      for (const login of logins) console.log(`  ${login.role.padEnd(8)} ${login.email}`);
+      if (!admin) console.log("No demo admin on this database (removed if an earlier run made one).");
+      console.log(passwordLine(secret));
     } else {
       const secret = demoPassword();
       const result = await syncDemoData(db, DEMO_DATA_ON_PRODUCTION, () => hashPassword(secret.password));
