@@ -97,6 +97,7 @@ model User {
   reviewsReceived    TeacherReview[]     @relation("ReviewTeacher")
   savedTeachers      SavedTeacher[]      @relation("SavedBy")
   savedBy            SavedTeacher[]      @relation("SavedTeacher")
+  sessionAttendance  SessionAttendance[]
 
   @@index([role, status])
 }
@@ -447,11 +448,30 @@ model TutoringSession {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
-  connection TeacherConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-  teacher    User              @relation("SessionTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  connection TeacherConnection   @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  teacher    User                @relation("SessionTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  attendance SessionAttendance[]
 
   @@index([teacherId, startsAt])
   @@index([connectionId, startsAt])
+}
+
+/// One stretch of time someone spent in a session's video room, recorded from LiveKit webhooks.
+model SessionAttendance {
+  id             String    @id @default(cuid())
+  sessionId      String
+  userId         String
+  /// LiveKit's id for this connection. Rejoining gets a new one, so a session can have several rows per person.
+  participantSid String    @unique
+  joinedAt       DateTime
+  leftAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  session TutoringSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, userId])
+  @@index([userId])
 }
 
 model Message {
