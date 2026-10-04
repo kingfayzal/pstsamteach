@@ -1,8 +1,10 @@
 name: CI
 
+# main is production and dev is where features are integrated and tested first;
+# feature branches reach both through pull requests.
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
 
 env:
