@@ -271,3 +271,66 @@
   border: 0;
   border-top: 1px solid var(--color-rule);
 }
+
+/*
+ * Live session rooms: LiveKit's components in our tokens. The stage is deep
+ * ink, like a slate, so faces read well; controls are paper on ink with the
+ * usual 6px corners. Green stays reserved for "done", so the speaking outline
+ * is paper.
+ */
+.live-room[data-lk-theme] {
+  color-scheme: dark;
+  --lk-bg: var(--color-ink-deep);
+  --lk-bg2: var(--color-ink);
+  --lk-bg3: color-mix(in srgb, var(--color-ink) 88%, var(--color-paper));
+  --lk-bg4: color-mix(in srgb, var(--color-ink) 80%, var(--color-paper));
+  --lk-bg5: color-mix(in srgb, var(--color-ink) 72%, var(--color-paper));
+  --lk-fg: var(--color-paper);
+  --lk-fg2: var(--color-paper);
+  --lk-fg3: var(--color-rule-soft);
+  --lk-fg4: var(--color-rule);
+  --lk-fg5: var(--color-rule);
+  --lk-border-color: rgb(245 248 252 / 0.16);
+  --lk-accent-fg: var(--color-ink);
+  --lk-accent-bg: var(--color-paper);
+  --lk-accent2: var(--color-rule-soft);
+  --lk-accent3: var(--color-rule);
+  --lk-accent4: var(--color-ink-soft);
+  --lk-danger-fg: var(--color-paper);
+  --lk-danger: var(--color-danger);
+  --lk-danger2: color-mix(in srgb, var(--color-danger) 88%, var(--color-paper));
+  --lk-danger3: color-mix(in srgb, var(--color-danger) 76%, var(--color-paper));
+  /* Not green: on this stage a good connection is simply quiet. */
+  --lk-connection-excellent: var(--color-rule);
+  --lk-connection-good: color-mix(in srgb, var(--color-amber) 45%, var(--color-paper));
+  --lk-connection-poor: color-mix(in srgb, var(--color-danger) 45%, var(--color-paper));
+  --lk-font-family: var(--font-sans);
+  --lk-font-size: 1rem;
+  --lk-border-radius: var(--radius-control);
+  --lk-control-bar-height: auto;
+  --lk-grid-gap: 0.5rem;
+}
+
+.live-room :focus-visible {
+  outline-color: var(--color-paper);
+}
+
+.live-room .lk-button[aria-pressed="true"] {
+  color: var(--color-ink);
+  background-color: var(--color-paper);
+}
+
+/* Leaving is final, so it's the one solid red control. */
+.live-room .lk-disconnect-button {
+  color: var(--color-paper);
+  background-color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.live-room .lk-participant-tile {
+  background-color: var(--color-ink);
+}
+
+.live-room .lk-participant-metadata-item {
+  background-color: rgb(13 23 48 / 0.72);
+}
