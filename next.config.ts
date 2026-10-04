@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
   // Lets the E2E server build into its own folder alongside a running dev server.
   distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
+  // Put metadata in the first <head> for every visitor instead of streaming it.
+  // Streamed metadata was rendered twice once the page hydrated (two titles, two
+  // share images), and link-preview crawlers want it in the head anyway.
+  htmlLimitedBots: /.*/,
   experimental: {
     // Teacher photos are capped at 2 MB; leave room for multipart overhead.
     serverActions: { bodySizeLimit: "3mb" },
