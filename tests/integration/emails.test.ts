@@ -73,13 +73,15 @@ describe("the outbox", () => {
 
     expect(await deliverDueEmails(transport, { now: NOW })).toEqual({ sent: 2, retrying: 0, failed: 0, expired: 0 });
     expect(sent).toHaveLength(2);
-    expect(sent[0]).toMatchObject({ to: "ada@example.com", subject: "Reset your Xcel Study password", idempotencyKey: `email-${reset.id}`, kind: "password-reset" });
-    expect(sent[0].html).toContain(LINK);
-    expect(sent[0].text).toContain(`Choose a new password: ${LINK}`);
+    // Both were queued at the same moment, so find each by its key rather than by send order.
+    const resetSent = sent.find((email) => email.idempotencyKey === `email-${reset.id}`);
+    expect(resetSent).toMatchObject({ to: "ada@example.com", subject: "Reset your Xcel Study password", kind: "password-reset" });
+    expect(resetSent?.html).toContain(LINK);
+    expect(resetSent?.text).toContain(`Choose a new password: ${LINK}`);
 
     const rows = await db.emailOutbox.findMany({ where: { id: { in: [reset.id, notice.id] } } });
     const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
-    expect(byId[reset.id]).toMatchObject({ status: "SENT", providerId: "re_1", attempts: 1, payload: {} });
+    expect(byId[reset.id]).toMatchObject({ status: "SENT", providerId: expect.stringMatching(/^re_\d$/), attempts: 1, payload: {} });
     expect(byId[notice.id]).toMatchObject({ status: "SENT", payload: { name: "Ada Obi" } });
 
     expect(await deliverDueEmails(transport, { now: NOW })).toEqual({ sent: 0, retrying: 0, failed: 0, expired: 0 });

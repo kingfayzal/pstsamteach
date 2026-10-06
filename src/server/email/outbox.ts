@@ -54,7 +54,7 @@ async function claimDue(now: Date, limit: number): Promise<ClaimedRow[]> {
     WHERE "id" IN (
       SELECT "id" FROM "EmailOutbox"
       WHERE ("status" = 'PENDING' AND "sendAfter" <= ${now}) OR ("status" = 'SENDING' AND "lockedUntil" <= ${now})
-      ORDER BY "sendAfter" ASC
+      ORDER BY "sendAfter" ASC, "createdAt" ASC, "id" ASC
       LIMIT ${limit}
       FOR UPDATE SKIP LOCKED
     )
