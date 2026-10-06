@@ -88,3 +88,14 @@ export async function emailedLink(to: string, kind: string, field: string): Prom
     await client.end();
   }
 }
+
+/** Mark an account's email address confirmed or not, to test the confirm-first rule with seeded accounts. */
+export async function setEmailConfirmed(email: string, confirmed: boolean): Promise<void> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query('UPDATE "User" SET "emailVerifiedAt" = CASE WHEN $2::boolean THEN NOW() ELSE NULL END WHERE "email" = $1', [email, confirmed]);
+  } finally {
+    await client.end();
+  }
+}

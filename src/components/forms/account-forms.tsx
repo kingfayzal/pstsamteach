@@ -3,7 +3,13 @@
 import { useActionState } from "react";
 import { FormMessage, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { changePasswordAction, resendConfirmationAction, setTimeZoneAction, updateProfileAction } from "@/server/actions/account";
+import {
+  changePasswordAction,
+  changeUnconfirmedEmailAction,
+  resendConfirmationAction,
+  setTimeZoneAction,
+  updateProfileAction,
+} from "@/server/actions/account";
 
 export function ProfileForm({ name, bio, showBio }: { name: string; bio: string | null; showBio: boolean }) {
   const [state, action] = useActionState(updateProfileAction, undefined);
@@ -60,7 +66,7 @@ export function TimeZoneForm({ current, suggested, zones }: { current: string | 
   );
 }
 
-/** "Send a new link" for an unconfirmed email address, used in the reminder banner and on the Account page. */
+/** "Send a new link" for an unconfirmed email address: on the confirm page, the public-page banner and the expired-link page. */
 export function ResendConfirmationForm({ className = "" }: { className?: string }) {
   const [state, action] = useActionState(resendConfirmationAction, undefined);
   return (
@@ -69,6 +75,20 @@ export function ResendConfirmationForm({ className = "" }: { className?: string 
         Send a new link
       </SubmitButton>
       <FormMessage state={state} />
+    </form>
+  );
+}
+
+/** Correct a mistyped address before it's confirmed; a fresh link goes to the new one. */
+export function ChangeEmailForm() {
+  const [state, action] = useActionState(changeUnconfirmedEmailAction, undefined);
+  return (
+    <form action={action} className="space-y-4" noValidate>
+      <FormMessage state={state} />
+      <TextField name="email" type="email" label="Correct email address" hint="You'll log in with this address from now on." autoComplete="email" required state={state} />
+      <SubmitButton pendingLabel="Sending…" variant="secondary" size="sm">
+        Send the link to this address
+      </SubmitButton>
     </form>
   );
 }

@@ -3,19 +3,22 @@ import Link from "next/link";
 import { SignupChart } from "@/components/admin/signup-chart";
 import { SubjectTag } from "@/components/ui/badges";
 import { Facts, PageHeader, Section } from "@/components/ui/layout";
+import { Notice } from "@/components/ui/notice";
 import { formatRelative } from "@/lib/format";
 import { requireRole } from "@/server/auth/session";
 import { getAdminOverview, getTutoringOverview } from "@/server/queries/admin";
 
 export const metadata: Metadata = { title: "Admin overview" };
 
-export default async function AdminOverviewPage() {
+export default async function AdminOverviewPage(props: PageProps<"/admin">) {
   await requireRole("ADMIN");
+  const { notice } = await props.searchParams;
   const [{ counts, signups, reviewQueue, pending, audit }, tutoring] = await Promise.all([getAdminOverview(), getTutoringOverview()]);
   const newStudents = signups.reduce((sum, d) => sum + d.students, 0);
 
   return (
     <>
+      <Notice value={notice} />
       <PageHeader title="Overview" description="How the platform is doing, and what needs you." />
       <div className="space-y-14">
         <div className="space-y-8">

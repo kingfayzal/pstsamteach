@@ -1,39 +1,90 @@
-import { expect, test } from "@playwright/test";
-import { emailedLink, formAlert, logOut } from "./helpers";
+import { expect, type Page, test } from "@playwright/test";
+import { DEMO, emailedLink, formAlert, logIn, logOut, setEmailConfirmed } from "./helpers";
 
-async function signUp(page: import("@playwright/test").Page, email: string, secret: string) {
+async function signUp(page: Page, email: string, secret: string) {
   await page.goto("/signup");
   await page.getByLabel("Full name").fill("Email Tester");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(secret);
   await page.getByRole("button", { name: "Create student account" }).click();
-  await expect(page).toHaveURL(/\/learn\?notice=welcome/);
+  await expect(page).toHaveURL("/check-email");
 }
 
-test("a new student confirms their email from the welcome email", async ({ page }) => {
-  const email = `e2e-confirm-${Date.now()}@example.com`;
-  await signUp(page, email, `conf-${Date.now()}-9x`);
+/** Every page that needs an account sends an unconfirmed one back to the confirm page. */
+async function expectHeldAtConfirm(page: Page, paths: string[]) {
+  for (const path of paths) {
+    await page.goto(path);
+    await expect(page, `${path} should wait for the email address`).toHaveURL(/\/check-email$/);
+  }
+  await expect(page.getByRole("heading", { name: "Confirm your email address" })).toBeVisible();
+}
 
-  await expect(page.getByText("Confirm your email address.")).toBeVisible();
-  await expect(page.getByText(email).first()).toBeVisible();
+test("a new student can do nothing until they confirm, and can fix a mistyped address", async ({ page }) => {
+  const stamp = Date.now();
+  const typo = `e2e-confirm-${stamp}@exmaple.com`;
+  const email = `e2e-confirm-${stamp}@example.com`;
+  await signUp(page, typo, `conf-${stamp}-9x`);
+  await expect(page.getByText(typo)).toBeVisible();
 
-  // The Account page says so too, with a way to get a new link.
-  await page.goto("/account");
-  await expect(page.getByText("isn’t confirmed yet")).toBeVisible();
+  await expectHeldAtConfirm(page, ["/learn", "/learn/teachers", "/account", "/teachers/ruth-mensah/choose"]);
 
-  await page.goto(await emailedLink(email, "welcome", "confirmUrl"));
-  await expect(page).toHaveURL(/\/account\?notice=email-confirmed/);
-  await expect(page.getByRole("status")).toContainText("Email address confirmed");
-  await expect(page.getByText("Confirmed", { exact: true })).toBeVisible();
-  await expect(page.getByText("Confirm your email address.")).toHaveCount(0);
+  // Wrong address: move the account to the right one; the first link stops working.
+  const firstLink = await emailedLink(typo, "welcome", "confirmUrl");
+  await page.getByText("Wrong address?").click();
+  await page.getByLabel("Correct email address").fill(email);
+  await page.getByRole("button", { name: "Send the link to this address" }).click();
+  await expect(page).toHaveURL(/\/check-email\?notice=email-changed/);
+  await expect(page.getByRole("status")).toContainText("We've sent a new link to it");
+  await expect(page.getByText(email)).toBeVisible();
 
-  // Opening the link again (a mail scanner may have opened it first) still lands well.
-  await page.goto(await emailedLink(email, "welcome", "confirmUrl"));
-  await expect(page).toHaveURL(/\/account\?notice=email-confirmed/);
-
-  await page.goto("/confirm-email?token=made-up");
+  await page.goto(firstLink);
   await expect(page).toHaveURL(/\/confirm-email\/expired/);
-  await expect(page.getByText("already confirmed")).toBeVisible();
+
+  const link = await emailedLink(email, "confirm-email", "confirmUrl");
+  await page.goto(link);
+  await expect(page).toHaveURL(/\/learn\?notice=email-confirmed/);
+  await expect(page.getByRole("status")).toContainText("Email address confirmed");
+
+  await page.goto("/account");
+  await expect(page.getByText("Confirmed", { exact: true })).toBeVisible();
+
+  // Opening the link again (a mail scanner may have opened it first) still lands well,
+  // and the confirm page has nothing left to ask.
+  await page.goto(link);
+  await expect(page).toHaveURL(/\/learn\?notice=email-confirmed/);
+  await page.goto("/check-email");
+  await expect(page).toHaveURL(/\/learn$/);
+});
+
+test("teacher applicants and admins wait for their email too", async ({ page }) => {
+  const stamp = Date.now();
+  const email = `e2e-apply-${stamp}@example.com`;
+  await page.goto("/apply");
+  await page.getByLabel("Full name").fill("Applicant Tester");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(`apply-${stamp}-9x`);
+  await page.getByLabel("Subject you want to teach").selectOption({ label: "Mathematics" });
+  await page.getByLabel("Your teaching experience").fill("I have taught secondary school mathematics for eight years, mostly exam preparation.");
+  await page.getByRole("button", { name: "Send application" }).click();
+  await expect(page).toHaveURL("/check-email");
+  await expect(page.getByText("Then you can follow your application.")).toBeVisible();
+  await expectHeldAtConfirm(page, ["/teach/pending", "/teach", "/account"]);
+
+  await page.goto(await emailedLink(email, "teacher-application", "confirmUrl"));
+  await expect(page).toHaveURL(/\/teach\/pending\?notice=email-confirmed/);
+  await expect(page.getByRole("heading", { name: "Your application is with our team" })).toBeVisible();
+  await logOut(page);
+
+  await setEmailConfirmed(DEMO.admin, false);
+  try {
+    await logIn(page, DEMO.admin);
+    await expect(page).toHaveURL(/\/check-email$/);
+    await expectHeldAtConfirm(page, ["/admin", "/admin/people", "/account"]);
+  } finally {
+    await setEmailConfirmed(DEMO.admin, true);
+  }
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin$/);
 });
 
 test("someone who forgot their password resets it from the emailed link", async ({ page }) => {
@@ -60,8 +111,8 @@ test("someone who forgot their password resets it from the emailed link", async 
   await page.getByLabel("New password", { exact: true }).fill(newSecret);
   await page.getByLabel("Confirm new password").fill(newSecret);
   await page.getByRole("button", { name: "Save new password" }).click();
+  // Following the reset link proved the inbox is theirs, so the account opens straight away.
   await expect(page).toHaveURL(/\/account\?notice=password-reset/);
-  // Following the link proved the inbox is theirs.
   await expect(page.getByText("Confirmed", { exact: true })).toBeVisible();
 
   await page.goto(link);

@@ -4,6 +4,7 @@ import { AnnouncementList } from "@/components/course/announcement-list";
 import { TeacherCourseList } from "@/components/course/teacher-course-list";
 import { LinkButton } from "@/components/ui/button";
 import { EmptyState, Facts, PageHeader, Section } from "@/components/ui/layout";
+import { Notice } from "@/components/ui/notice";
 import { UpcomingSessions } from "@/components/teachers/upcoming-sessions";
 import { formatRelative } from "@/lib/format";
 import { requireRole } from "@/server/auth/session";
@@ -14,8 +15,9 @@ import { isLiveVideoEnabled } from "@/server/video";
 
 export const metadata: Metadata = { title: "Teacher dashboard" };
 
-export default async function TeacherDashboard() {
+export default async function TeacherDashboard(props: PageProps<"/teach">) {
   const user = await requireRole("TEACHER");
+  const { notice } = await props.searchParams;
   const [stats, courses, queue, announcements] = await Promise.all([
     getTeacherStats(user),
     getTeacherCourses(user),
@@ -27,6 +29,7 @@ export default async function TeacherDashboard() {
 
   return (
     <>
+      <Notice value={notice} />
       <PageHeader
         title={`Hello, ${user.name.split(" ")[0]}`}
         description={stats.awaiting ? `You have ${stats.awaiting} piece${stats.awaiting === 1 ? "" : "s"} of work waiting to be marked.` : "Nothing waiting to be marked. Nice."}
