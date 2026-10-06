@@ -1,4 +1,5 @@
 import { type APIRequestContext, expect, type Page } from "@playwright/test";
+import { Client } from "pg";
 
 export const DEMO = {
   admin: "admin@example.com",
@@ -61,4 +62,29 @@ export async function expectBrandShareImage(page: Page, request: APIRequestConte
 /** Pre-set the time-zone cookie TimeZoneSync would write, so the first render is already local. */
 export async function useLagosTime(page: Page): Promise<void> {
   await page.context().addCookies([{ name: "st_tz", value: encodeURIComponent("Africa/Lagos"), url: "http://localhost:3100" }]);
+}
+
+/** Same default as playwright.config.ts: the E2E server's own database. */
+const E2E_DATABASE_URL = process.env.E2E_DATABASE_URL ?? "postgresql://postgres@localhost:5432/pstsamteach_e2e";
+
+/**
+ * The link from the newest email of a kind sent to an address, as a path on the
+ * E2E server. Without RESEND_API_KEY the server logs email instead of sending it,
+ * and keeps the queued copy, so the test reads the link from there.
+ */
+export async function emailedLink(to: string, kind: string, field: string): Promise<string> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    const { rows } = await client.query<{ payload: Record<string, string> }>(
+      'SELECT "payload" FROM "EmailOutbox" WHERE "toEmail" = $1 AND "kind" = $2 ORDER BY "createdAt" DESC LIMIT 1',
+      [to, kind],
+    );
+    const link = rows[0]?.payload[field];
+    if (!link) throw new Error(`No ${kind} email with a ${field} was queued for ${to}.`);
+    const url = new URL(link);
+    return `${url.pathname}${url.search}`;
+  } finally {
+    await client.end();
+  }
 }

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/server/db";
-import { getProfile } from "@/server/queries/account";
+import { getProfile, getUnconfirmedEmail } from "@/server/queries/account";
 import {
   getAdminOverview,
   getCourseForReview,
@@ -244,6 +244,19 @@ describe("admin queries", () => {
 
   it("reads a profile", async () => {
     const student = await makeStudent();
-    expect(await getProfile(student.id)).toEqual({ name: student.name, bio: null, timeZone: null });
+    expect(await getProfile(student.id)).toEqual({
+      name: student.name,
+      bio: null,
+      timeZone: null,
+      email: student.email,
+      emailVerifiedAt: expect.any(Date),
+    });
+  });
+
+  it("names the address still waiting to be confirmed, and nothing once it is", async () => {
+    const waiting = await makeUser({ confirmed: false });
+    expect(await getUnconfirmedEmail(waiting.id)).toBe(waiting.email);
+    expect(await getUnconfirmedEmail((await makeStudent()).id)).toBeNull();
+    expect(await getUnconfirmedEmail("no-such-user")).toBeNull();
   });
 });

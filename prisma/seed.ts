@@ -195,7 +195,7 @@ async function main() {
   const ids: Record<string, string> = {};
   for (const [key, person] of Object.entries(PEOPLE)) {
     const created = await db.user.create({
-      data: { ...person, passwordHash, status: "ACTIVE", createdAt: daysAgo(JOINED[key as keyof typeof PEOPLE]), lastLoginAt: daysAgo(1) },
+      data: { ...person, passwordHash, status: "ACTIVE", emailVerifiedAt: daysAgo(JOINED[key as keyof typeof PEOPLE]), createdAt: daysAgo(JOINED[key as keyof typeof PEOPLE]), lastLoginAt: daysAgo(1) },
     });
     ids[key] = created.id;
   }
@@ -204,6 +204,7 @@ async function main() {
       name: "Samuel Eze",
       email: "samuel@example.com",
       passwordHash,
+      emailVerifiedAt: daysAgo(2),
       role: "TEACHER",
       status: "PENDING",
       applicationSubjectId: subjectIds.mathematics,
@@ -221,7 +222,7 @@ async function main() {
   const recentIds: string[] = [];
   for (const [name, days] of RECENT_STUDENTS) {
     const email = `${name.split(" ")[0].toLowerCase()}@example.com`;
-    const created = await db.user.create({ data: { name, email, passwordHash, role: "STUDENT", status: "ACTIVE", createdAt: daysAgo(days) } });
+    const created = await db.user.create({ data: { name, email, passwordHash, role: "STUDENT", status: "ACTIVE", emailVerifiedAt: daysAgo(days), createdAt: daysAgo(days) } });
     recentIds.push(created.id);
     ids[name.split(" ")[0].toLowerCase()] = created.id;
   }

@@ -52,6 +52,19 @@ export const passwordChangeSchema = z
     error: "The new passwords don't match.",
   });
 
+export const passwordResetRequestSchema = z.object({ email: emailSchema });
+
+export const passwordResetSchema = z
+  .object({
+    token: z.string().min(1, "This reset link is incomplete. Open it from the email again.").max(100),
+    newPassword: newPasswordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    path: ["confirmPassword"],
+    error: "The new passwords don't match.",
+  });
+
 export type SignupInput = z.infer<typeof signupSchema>;
 export type TeacherApplicationInput = z.infer<typeof teacherApplicationSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;

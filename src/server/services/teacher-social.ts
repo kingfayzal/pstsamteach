@@ -2,6 +2,7 @@ import "server-only";
 import { messageSchema, reviewSchema } from "@/lib/validation/teacher";
 import { db } from "@/server/db";
 import { recordAudit } from "./audit";
+import { requireConfirmedEmail } from "./email-confirmation";
 import { type Actor, fail, forbidden, invalid, isActiveRole, notFound, ok, type ServiceResult } from "./result";
 
 async function loadParty(actor: Actor, connectionId: string) {
@@ -20,6 +21,8 @@ export async function sendMessage(actor: Actor, connectionId: string, input: unk
   if (connection.status !== "PENDING" && connection.status !== "ACTIVE") {
     return fail("CONFLICT", "This conversation is closed because you're no longer working together.");
   }
+  const unconfirmed = await requireConfirmedEmail(actor);
+  if (unconfirmed) return unconfirmed;
   const parsed = messageSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
   const message = await db.message.create({ data: { connectionId, senderId: actor.id, body: parsed.data.body }, select: { id: true } });

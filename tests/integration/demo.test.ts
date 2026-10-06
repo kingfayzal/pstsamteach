@@ -26,6 +26,8 @@ const LAGOS = { timeZone: "Africa/Lagos" };
 describe("demo data", { timeout: 30_000 }, () => {
   it("adds three D- subjects, teachers and students, and lists the teachers in the directory", async () => {
     await addDemoData(db, await hashPassword(PASSWORD));
+    const demoEmails = [...DEMO_TEACHERS, ...DEMO_STUDENTS].map((person) => person.email);
+    expect(await db.user.count({ where: { email: { in: demoEmails }, emailVerifiedAt: null } })).toBe(0);
 
     const subjects = await db.subject.findMany({ orderBy: { position: "asc" }, select: { name: true, topics: { select: { id: true } } } });
     expect(subjects.map((s) => s.name)).toEqual(["D-Science", "D-History", "D-Geography"]);
@@ -124,6 +126,8 @@ describe("demo logins", { timeout: 30_000 }, () => {
       ["teacher@xceldemo.com", "TEACHER"],
     ]);
     expect(people.every((p) => p.status === "ACTIVE")).toBe(true);
+    // Demo addresses can't receive mail, so they must start confirmed or the student couldn't book.
+    expect(await db.user.count({ where: { email: { in: emails }, emailVerifiedAt: null } })).toBe(0);
     for (const email of emails) {
       expect((await authenticate({ email, password: PASSWORD })).ok).toBe(true);
     }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { logoutAction } from "@/server/actions/auth";
 import { Wordmark } from "@/components/brand/wordmark";
+import { ConfirmEmailBanner } from "./confirm-email-banner";
 import { NavLinks, type NavItem } from "./nav-links";
 
 type Props = {
@@ -9,6 +10,8 @@ type Props = {
   home: string;
   nav: NavItem[];
   user: { name: string; email: string };
+  /** The address still to be confirmed, if any; shows the reminder banner. */
+  unconfirmedEmail?: string | null;
   children: ReactNode;
 };
 
@@ -38,7 +41,7 @@ function UserBlock({ user }: { user: Props["user"] }) {
 }
 
 /** Shell for the signed-in areas: a rail on wide screens, a disclosure menu on phones. */
-export function AppShell({ area, home, nav, user, children }: Props) {
+export function AppShell({ area, home, nav, user, unconfirmedEmail, children }: Props) {
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
       <aside className="hidden border-r border-rule lg:block">
@@ -76,7 +79,10 @@ export function AppShell({ area, home, nav, user, children }: Props) {
       </header>
 
       <main id="main" className="min-w-0 px-4 py-8 sm:px-8 lg:px-12 lg:py-10">
-        <div className="mx-auto max-w-5xl">{children}</div>
+        <div className="mx-auto max-w-5xl">
+          {unconfirmedEmail ? <ConfirmEmailBanner email={unconfirmedEmail} /> : null}
+          {children}
+        </div>
       </main>
     </div>
   );
