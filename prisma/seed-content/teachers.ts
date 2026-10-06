@@ -3,9 +3,16 @@
  * only; the seed refuses to run against a remote database.
  */
 
-export const TOPICS: Record<"english" | "mathematics" | "nursing" | "yoruba" | "music", string[]> = {
-  english: ["Grammar and punctuation", "Essay writing", "Reading comprehension", "Spoken English", "IELTS preparation", "Business English"],
-  mathematics: ["Arithmetic", "Algebra", "Geometry", "Statistics", "Calculus", "Exam preparation"],
+import { CATALOG } from "./catalog";
+
+const catalogTopics = (slug: string): string[] => [...(CATALOG.find((subject) => subject.slug === slug)?.topics ?? [])];
+
+/** Topics per subject slug. The platform's own subjects come from the catalog, as on every real database. */
+export const TOPICS: Record<"english" | "mathematics" | "vocational-development" | "test-preparation" | "nursing" | "yoruba" | "music", string[]> = {
+  english: catalogTopics("english"),
+  mathematics: catalogTopics("mathematics"),
+  "vocational-development": catalogTopics("vocational-development"),
+  "test-preparation": catalogTopics("test-preparation"),
   nursing: [
     "Dosage calculations",
     "Pharmacology",
@@ -72,7 +79,10 @@ export const TEACHERS: TeacherSeed[] = [
     qualifications: "BA English and Education\nIELTS examiner training",
     experienceYears: 12,
     languages: ["English", "Yoruba"],
-    topics: [{ subject: "english", names: ["Grammar and punctuation", "Essay writing", "IELTS preparation"] }],
+    topics: [
+      { subject: "english", names: ["Grammar", "Summary Writing", "Comprehension"] },
+      { subject: "test-preparation", names: ["IELTS", "WAEC (West Africa)"] },
+    ],
     timeZone: "Africa/Lagos",
     sessionMinutes: 60,
     acceptingStudents: true,
@@ -90,7 +100,10 @@ export const TEACHERS: TeacherSeed[] = [
     qualifications: "BSc Mathematics\nPGDE (secondary maths)",
     experienceYears: 8,
     languages: ["English", "Igbo"],
-    topics: [{ subject: "mathematics", names: ["Algebra", "Geometry", "Exam preparation"] }],
+    topics: [
+      { subject: "mathematics", names: ["Algebra I & II", "Geometry", "Trigonometry"] },
+      { subject: "test-preparation", names: ["WAEC (West Africa)", "UTME (Nigeria)"] },
+    ],
     timeZone: "Africa/Lagos",
     sessionMinutes: 60,
     acceptingStudents: true,
@@ -146,7 +159,7 @@ export const TEACHERS: TeacherSeed[] = [
     qualifications: "BA Linguistics\nCELTA",
     experienceYears: 6,
     languages: ["English", "Igbo", "Nigerian Pidgin"],
-    topics: [{ subject: "english", names: ["Spoken English", "Business English", "Reading comprehension"] }],
+    topics: [{ subject: "english", names: ["Oral English", "Vocabulary Development", "Comprehension"] }],
     timeZone: "Africa/Lagos",
     sessionMinutes: 45,
     acceptingStudents: true,
@@ -164,7 +177,7 @@ export const TEACHERS: TeacherSeed[] = [
     qualifications: "MSc Applied Statistics",
     experienceYears: 15,
     languages: ["English", "Twi", "French"],
-    topics: [{ subject: "mathematics", names: ["Statistics", "Calculus", "Arithmetic"] }],
+    topics: [{ subject: "mathematics", names: ["Statistics", "Calculus", "Basic Math"] }],
     timeZone: "Africa/Accra",
     sessionMinutes: 90,
     acceptingStudents: true,
@@ -200,7 +213,7 @@ export const TEACHERS: TeacherSeed[] = [
     qualifications: "BSc Mathematics Education",
     experienceYears: 4,
     languages: ["English", "Hausa", "Arabic"],
-    topics: [{ subject: "mathematics", names: ["Arithmetic", "Algebra"] }],
+    topics: [{ subject: "mathematics", names: ["Basic Math", "Algebra I & II"] }],
     timeZone: "Africa/Lagos",
     sessionMinutes: 60,
     acceptingStudents: false,
