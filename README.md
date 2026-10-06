@@ -1,6 +1,6 @@
 # Xcel Study
 
-Xcel Study (*Learning with ease*) is a tutoring and teaching platform. Admins manage the subjects; the demo data has **Mathematics, English, Yoruba, Music (bass guitar) and Nursing**. It has three sides:
+Xcel Study (*Learning with ease*) is a tutoring and teaching platform. The platform's subjects are **Mathematics, English, Vocational Development and Test Preparation**, each with its topics (from the SAT and IELTS to WAEC, NECO and UTME), defined in `prisma/seed-content/catalog.ts` and added to every database once by a migration; after that, admins manage subjects and topics. Local demo data also has Nursing, Yoruba and Music (bass guitar). It has three sides:
 
 - **Students** choose their own teacher from a directory (filter by subject, topic, language, day and time of day; read profiles, watch intro videos, check the availability timetable and reviews). They send a request, book live one-to-one sessions once accepted, and message their teacher. They can also enrol in courses, work through lessons, take auto-marked quizzes, hand in written assignments, and see grades and feedback.
 - **Teachers** apply to teach, build a directory profile (photo, headline, about, teaching style, qualifications, topics, languages, intro video, meeting link, weekly availability), accept or decline student requests, run one-to-one sessions, and message students. They also build courses, submit them for review, mark submitted work, post announcements, and follow each student's progress.
