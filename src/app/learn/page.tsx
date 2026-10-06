@@ -12,6 +12,7 @@ import { requireRole } from "@/server/auth/session";
 import { getViewerTimeZone } from "@/server/auth/viewer";
 import { listStudentConnections, listUpcomingSessions } from "@/server/queries/connections";
 import { getRecentResults, getStudentAnnouncements, getStudentCourses } from "@/server/queries/student";
+import { isLiveVideoEnabled } from "@/server/video";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -22,7 +23,7 @@ export default async function StudentDashboard(props: PageProps<"/learn">) {
     getStudentCourses(user.id),
     getRecentResults(user.id),
     getStudentAnnouncements(user.id),
-    listUpcomingSessions(user.id, "STUDENT"),
+    listUpcomingSessions(user.id, "STUDENT", new Date(), { includeOpenRooms: isLiveVideoEnabled() }),
     listStudentConnections(user.id),
     getViewerTimeZone(),
   ]);
@@ -49,7 +50,7 @@ export default async function StudentDashboard(props: PageProps<"/learn">) {
           actions={hasTeacher ? <Link href="/learn/teachers" className="text-base font-bold underline decoration-rule underline-offset-4">All your teachers</Link> : null}
         >
           {sessions.length ? (
-            <UpcomingSessions sessions={sessions} timeZone={timeZone} linkBase="/learn/teachers" />
+            <UpcomingSessions sessions={sessions} timeZone={timeZone} linkBase="/learn/teachers" liveRoom={isLiveVideoEnabled()} />
           ) : hasTeacher ? (
             <p className="text-base text-muted">No sessions booked. Open a teacher to book your next one.</p>
           ) : (

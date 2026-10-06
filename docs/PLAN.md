@@ -126,3 +126,96 @@ ACTIVE: book sessions from open slots, message, review; either side can end -> E
 - Times are stored in UTC and shown in the viewer's time zone (account setting, else the browser's,
   captured in a cookie).
 - No prices: pricing hasn't been decided.
+
+---
+
+# Phase 3 — Live sessions in Xcel Study
+
+Confirmed sessions happen in Xcel Study's own video room, built on LiveKit
+([ADR-0001](adr/0001-livekit-for-live-tutoring-video.md)). It switches on when
+`LIVEKIT_URL`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` are all set. Until then,
+sessions use the teacher's meeting link as before.
+
+## Flow
+
+```
+Session list / dashboard --"Join the session" (full page load)--> /sessions/[id]
+  before the window:  "starts at 17:00, room opens at 16:50" (page refreshes itself)
+  window open:        camera check --Join--> server action --> service checks --> 10-minute token --> LiveKit
+  in the call:        the other person on stage, you in the corner, mic / camera / screen share / chat / leave
+  after leaving:      rejoin, or back to the relationship page
+LiveKit --signed webhook--> /api/livekit/webhook --> SessionAttendance --> "In the video room: you 52 min, Kemi 50 min."
+```
+
+## Model
+
+- `SessionAttendance`: one row per LiveKit connection (`participantSid` unique), with `joinedAt` and `leftAt`.
+  Rejoining adds a row; overlapping stays are merged when minutes are counted.
+
+## Rules
+
+- Only the session's student and teacher can see the room or get a token; anyone else gets "not found".
+  The session must be CONFIRMED, the partnership ACTIVE, and the account active.
+- The room opens 10 minutes before the start and closes 15 minutes after the end (`src/lib/live-sessions.ts`).
+- Tokens are for that session's room only, last 10 minutes, and can publish camera, microphone, screen share
+  and data (chat pings). Never room admin, create, list or record.
+- In-call chat is the pair's message thread (same validation and rate limit); LiveKit only carries a ping.
+- The teacher's meeting link stays as a backup inside the room, for an active partnership's session that is
+  ahead or under way only.
+- Cancelling a session, ending a partnership or suspending an account closes any open room it affects
+  (`closeLiveRooms`, best effort). Rooms take two people at most, and the room page leaves at closing time.
+- Sessions stay listed with a join link until their room closes, so people can get back in after a drop.
+- Webhooks are verified against the raw body's signature before anything is read, and only events for real
+  sessions and their two people are recorded.
+- Only `/sessions/*` may use the camera, microphone and screen sharing or connect to the LiveKit host.
+- No recording until there's a consent and storage policy.
+
+---
+
+# Phase 4 — Email
+
+Email goes through Resend ([ADR-0002](adr/0002-resend-for-transactional-email.md)), in
+batches, most important first.
+
+## Batch 1: account emails (done)
+
+| Event | Email | To |
+| --- | --- | --- |
+| Student signs up | Welcome, with a link to confirm the address | The student |
+| Teacher applies | Application received, with a confirmation link | The applicant |
+| "Send a new link" | A fresh confirmation link | The person asking |
+| "Forgot your password?" | A one-hour, single-use reset link | The account, if there is one |
+| Password changed (Account page or reset link) | Security notice, with a reset link | The account |
+| Application approved / declined | The decision and what's next | The applicant |
+| Account suspended / restored | What happened and how to get help | The person |
+
+## Flow
+
+```
+service: change + enqueueEmail(tx) ── one transaction ──> EmailOutbox (PENDING)
+action:  sendQueuedEmails() ──after()──> claim due rows (SKIP LOCKED, 2-min lease)
+           ──> render template ──> Resend (idempotency key = row id)
+           ok: SENT (link payloads emptied)   temporary: retry 1m/5m/30m/2h/12h   permanent: FAILED
+daily cron /api/cron/emails: send anything due, prune expired links and old rows
+```
+
+## Rules
+
+- Links in emails point at `APP_URL`, else Vercel's production or branch domain, never the request host.
+- Confirmation links last 3 days, reset links one hour; both are single use and tied to the address they went to.
+- Every role waits for a confirmed address. `requireUser`/`requireRole` send an unconfirmed account to
+  `/check-email` (new link, fix a mistyped address, log out) from every signed-in page and action; only that
+  page and its actions opt out (`allowUnconfirmed`). Confirming lands on the account's dashboard. Public
+  pages stay readable, with a banner. Requesting, accepting, booking and messaging also refuse an
+  unconfirmed address in the service layer (`requireConfirmedEmail`), as a second line.
+- Using a reset link confirms the address, voids other reset links and signs out every device.
+- "Forgot your password?" gives the same answer for any address and is rate limited per IP and per address.
+- Without Resend configured, email is printed to the server log (never on production, which won't build without it).
+
+## Next batches
+
+2. Tutoring: request received (teacher), accepted or declined (student), session booked (both, with an
+   `.ics` invite), reminders 24 hours and 1 hour before (Resend scheduled sends, cancelled with the
+   session), session cancelled, partnership ended.
+3. Everything else, with notification preferences and one-click unsubscribe: new messages while away
+   (batched), marked work, course review decisions, announcements.

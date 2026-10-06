@@ -4,27 +4,32 @@ import { AnnouncementList } from "@/components/course/announcement-list";
 import { TeacherCourseList } from "@/components/course/teacher-course-list";
 import { LinkButton } from "@/components/ui/button";
 import { EmptyState, Facts, PageHeader, Section } from "@/components/ui/layout";
+import { Notice } from "@/components/ui/notice";
 import { UpcomingSessions } from "@/components/teachers/upcoming-sessions";
 import { formatRelative } from "@/lib/format";
 import { requireRole } from "@/server/auth/session";
 import { getViewerTimeZone } from "@/server/auth/viewer";
 import { listTeacherConnections, listUpcomingSessions } from "@/server/queries/connections";
 import { getMarkingQueue, getTeacherAnnouncements, getTeacherCourses, getTeacherStats } from "@/server/queries/teacher";
+import { isLiveVideoEnabled } from "@/server/video";
 
 export const metadata: Metadata = { title: "Teacher dashboard" };
 
-export default async function TeacherDashboard() {
+export default async function TeacherDashboard(props: PageProps<"/teach">) {
   const user = await requireRole("TEACHER");
+  const { notice } = await props.searchParams;
   const [stats, courses, queue, announcements] = await Promise.all([
     getTeacherStats(user),
     getTeacherCourses(user),
     getMarkingQueue(user, 5),
     getTeacherAnnouncements(3),
   ]);
-  const [sessions, students, timeZone] = await Promise.all([listUpcomingSessions(user.id, "TEACHER"), listTeacherConnections(user.id), getViewerTimeZone()]);
+  const [sessions, students, timeZone] = await Promise.all([listUpcomingSessions(user.id, "TEACHER", new Date(), { includeOpenRooms: isLiveVideoEnabled() }),
+    listTeacherConnections(user.id), getViewerTimeZone()]);
 
   return (
     <>
+      <Notice value={notice} />
       <PageHeader
         title={`Hello, ${user.name.split(" ")[0]}`}
         description={stats.awaiting ? `You have ${stats.awaiting} piece${stats.awaiting === 1 ? "" : "s"} of work waiting to be marked.` : "Nothing waiting to be marked. Nice."}
@@ -52,7 +57,7 @@ export default async function TeacherDashboard() {
 
         <Section title="Upcoming sessions" actions={<Link href="/teach/students" className="text-base font-bold underline decoration-rule underline-offset-4">Your students</Link>}>
           {sessions.length ? (
-            <UpcomingSessions sessions={sessions} timeZone={timeZone} linkBase="/teach/students" />
+            <UpcomingSessions sessions={sessions} timeZone={timeZone} linkBase="/teach/students" liveRoom={isLiveVideoEnabled()} />
           ) : (
             <p className="text-base text-muted">
               No live sessions booked.{" "}

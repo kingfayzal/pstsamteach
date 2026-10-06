@@ -6,7 +6,8 @@ import { TeacherAvatar } from "@/components/teachers/teacher-avatar";
 import { LinkButton } from "@/components/ui/button";
 import { Breadcrumbs } from "@/components/ui/layout";
 import { requestTeacherAction } from "@/server/actions/find-teacher";
-import { getCurrentUser } from "@/server/auth/session";
+import { CHECK_EMAIL_PATH } from "@/lib/routes";
+import { getCurrentUser, needsEmailConfirmation } from "@/server/auth/session";
 import { getViewerTimeZone } from "@/server/auth/viewer";
 import { labelSlotGroups } from "@/server/queries/slot-labels";
 import { getBookingSlots, getTeacherProfilePage } from "@/server/queries/teachers";
@@ -17,6 +18,8 @@ export default async function ChooseTeacherPage(props: PageProps<"/teachers/[slu
   const [{ slug }, user, timeZone] = await Promise.all([props.params, getCurrentUser(), getViewerTimeZone()]);
   const data = await getTeacherProfilePage(slug, { id: user?.id, role: user?.role, timeZone });
   if (!data || !data.isListed) notFound();
+  // Signed in but unconfirmed: confirming comes before choosing a teacher.
+  if (user && (await needsEmailConfirmation())) redirect(CHECK_EMAIL_PATH);
   const { profile, viewerRelation } = data;
   const firstName = profile.name.split(" ")[0];
   const color = profile.subjects[0]?.color;

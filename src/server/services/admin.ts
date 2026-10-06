@@ -4,7 +4,10 @@ import { slugify } from "@/lib/slug";
 import { subjectSchema } from "@/lib/validation/admin";
 import { revokeUserSessions } from "@/server/auth/session-store";
 import { db } from "@/server/db";
+import { absoluteUrl, enqueueEmail } from "@/server/email";
+import { getVideoProvider, type VideoProvider } from "@/server/video";
 import { recordAudit } from "./audit";
+import { closeLiveRooms } from "./live-sessions";
 import { type Actor, fail, forbidden, invalid, isActiveRole, notFound, ok, type ServiceResult } from "./result";
 
 const ROLES: readonly Role[] = ["STUDENT", "TEACHER", "ADMIN"];
@@ -12,7 +15,7 @@ const ROLES: readonly Role[] = ["STUDENT", "TEACHER", "ADMIN"];
 async function loadOtherUser(actor: Actor, userId: string) {
   if (!isActiveRole(actor, "ADMIN")) return forbidden();
   if (actor.id === userId) return fail("CONFLICT", "You can't change your own account from here.");
-  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, name: true, role: true, status: true } });
+  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true, role: true, status: true } });
   if (!user) return notFound("That person");
   return ok(user);
 }
@@ -25,6 +28,7 @@ export async function approveTeacher(actor: Actor, userId: string): Promise<Serv
   await db.$transaction(async (tx) => {
     await tx.user.update({ where: { id: userId }, data: { status: "ACTIVE" } });
     await recordAudit(tx, { actorId: actor.id, action: "user.approve", entity: "user", entityId: userId, summary: `Approved teacher: ${user.name}` });
+    await enqueueEmail(tx, { to: user.email, userId, message: { kind: "teacher-approved", data: { name: user.name, profileUrl: absoluteUrl("/teach/profile") } } });
   });
   return ok(null);
 }
@@ -44,19 +48,28 @@ export async function declineTeacher(actor: Actor, userId: string): Promise<Serv
       entityId: userId,
       summary: `Declined teacher application: ${user.name} (kept as student)`,
     });
+    await enqueueEmail(tx, { to: user.email, userId, message: { kind: "teacher-declined", data: { name: user.name, learnUrl: absoluteUrl("/learn") } } });
   });
   return ok(null);
 }
 
-export async function suspendUser(actor: Actor, userId: string): Promise<ServiceResult<null>> {
+export async function suspendUser(
+  actor: Actor,
+  userId: string,
+  now = new Date(),
+  provider: VideoProvider | null = getVideoProvider(),
+): Promise<ServiceResult<null>> {
   const loaded = await loadOtherUser(actor, userId);
   if (!loaded.ok) return loaded;
   if (loaded.data.status === "SUSPENDED") return ok(null);
   await db.$transaction(async (tx) => {
     await tx.user.update({ where: { id: userId }, data: { status: "SUSPENDED" } });
     await recordAudit(tx, { actorId: actor.id, action: "user.suspend", entity: "user", entityId: userId, summary: `Suspended: ${loaded.data.name}` });
+    await enqueueEmail(tx, { to: loaded.data.email, userId, message: { kind: "account-suspended", data: { name: loaded.data.name } } });
   });
   await revokeUserSessions(userId);
+  // Signing out isn't enough for a call already under way: close their open video rooms too.
+  await closeLiveRooms({ userId }, now, provider);
   return ok(null);
 }
 
@@ -67,6 +80,11 @@ export async function reactivateUser(actor: Actor, userId: string): Promise<Serv
   await db.$transaction(async (tx) => {
     await tx.user.update({ where: { id: userId }, data: { status: "ACTIVE" } });
     await recordAudit(tx, { actorId: actor.id, action: "user.reactivate", entity: "user", entityId: userId, summary: `Reactivated: ${loaded.data.name}` });
+    await enqueueEmail(tx, {
+      to: loaded.data.email,
+      userId,
+      message: { kind: "account-reactivated", data: { name: loaded.data.name, loginUrl: absoluteUrl("/login") } },
+    });
   });
   return ok(null);
 }

@@ -2,6 +2,9 @@ import "server-only";
 import { findBookableSlot, BOOKING_HORIZON_DAYS } from "@/lib/scheduling";
 import { connectionRequestSchema, declineSchema } from "@/lib/validation/teacher";
 import { db } from "@/server/db";
+import { getVideoProvider, type VideoProvider } from "@/server/video";
+import { requireConfirmedEmail } from "./email-confirmation";
+import { closeLiveRooms } from "./live-sessions";
 import { busyIntervals, loadSchedulingProfile, lockSchedules, profileIsListed } from "./teacher-common";
 import { type Actor, fail, forbidden, invalid, isActiveRole, notFound, ok, type ServiceResult } from "./result";
 
@@ -16,6 +19,8 @@ export async function requestTeacher(
   now = new Date(),
 ): Promise<ServiceResult<{ connectionId: string }>> {
   if (!isActiveRole(actor, "STUDENT")) return forbidden("Only student accounts can choose a teacher.");
+  const unconfirmed = await requireConfirmedEmail(actor);
+  if (unconfirmed) return unconfirmed;
   const profile = await loadSchedulingProfile(db, teacherId);
   if (!profile || !profileIsListed(profile)) return notFound("That teacher");
   if (!profile.acceptingStudents) return fail("CONFLICT", `${profile.user.name} isn't taking new students right now.`);
@@ -86,6 +91,11 @@ export async function respondToRequest(
   });
   if (!connection || connection.teacherId !== actor.id) return notFound("That request");
   if (connection.status !== "PENDING") return fail("CONFLICT", "You've already replied to this request.");
+  // Declining is always allowed; taking someone on waits until we can reach the teacher.
+  if (accept) {
+    const unconfirmed = await requireConfirmedEmail(actor);
+    if (unconfirmed) return unconfirmed;
+  }
 
   const parsed = declineSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
@@ -123,7 +133,12 @@ export async function respondToRequest(
 }
 
 /** Either side stops working together (or a student withdraws a pending request). */
-export async function endConnection(actor: Actor, connectionId: string, now = new Date()): Promise<ServiceResult<null>> {
+export async function endConnection(
+  actor: Actor,
+  connectionId: string,
+  now = new Date(),
+  provider: VideoProvider | null = getVideoProvider(),
+): Promise<ServiceResult<null>> {
   const connection = await db.teacherConnection.findUnique({
     where: { id: connectionId },
     select: { id: true, studentId: true, teacherId: true, status: true },
@@ -139,5 +154,7 @@ export async function endConnection(actor: Actor, connectionId: string, now = ne
       data: { status: "CANCELLED", cancelledById: actor.id, cancelReason: "No longer working together." },
     }),
   ]);
+  // Including a session in progress: neither person should stay in a call after stopping.
+  await closeLiveRooms({ connectionId }, now, provider);
   return ok(null);
 }

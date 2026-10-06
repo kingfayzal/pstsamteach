@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
+import { JOIN_CLOSES_MINUTES_AFTER } from "@/lib/live-sessions";
 import { db } from "@/server/db";
 import { progressSelect, summarizeCourse } from "./course-progress";
 import { photoUrl } from "./teachers";
@@ -14,6 +15,12 @@ const sessionSelect = {
   agenda: true,
   cancelReason: true,
   cancelledById: true,
+} satisfies Prisma.TutoringSessionSelect;
+
+/** Relationship pages also show who was in each past session's video room. */
+const sessionWithAttendanceSelect = {
+  ...sessionSelect,
+  attendance: { select: { userId: true, joinedAt: true, leftAt: true } },
 } satisfies Prisma.TutoringSessionSelect;
 
 const messageSelect = { id: true, body: true, createdAt: true, readAt: true, senderId: true } satisfies Prisma.MessageSelect;
@@ -90,7 +97,7 @@ export async function getStudentConnection(studentId: string, connectionId: stri
           },
         },
       },
-      sessions: { orderBy: { startsAt: "asc" }, select: sessionSelect },
+      sessions: { orderBy: { startsAt: "asc" }, select: sessionWithAttendanceSelect },
       messages: { orderBy: { createdAt: "asc" }, take: 200, select: messageSelect },
     },
   });
@@ -135,7 +142,7 @@ export async function getTeacherConnection(teacherId: string, connectionId: stri
       endedById: true,
       topic: { select: { name: true } },
       student: { select: { id: true, name: true, email: true } },
-      sessions: { orderBy: { startsAt: "asc" }, select: sessionSelect },
+      sessions: { orderBy: { startsAt: "asc" }, select: sessionWithAttendanceSelect },
       messages: { orderBy: { createdAt: "asc" }, take: 200, select: messageSelect },
     },
   });
@@ -165,12 +172,22 @@ export async function countPendingRequests(teacherId: string): Promise<number> {
   return db.teacherConnection.count({ where: { teacherId, status: "PENDING" } });
 }
 
-/** Upcoming sessions for a student or teacher, soonest first. */
-export async function listUpcomingSessions(userId: string, as: "STUDENT" | "TEACHER", now = new Date(), limit = 5) {
+/**
+ * Upcoming sessions for a student or teacher, soonest first. With video rooms on,
+ * a confirmed session stays listed while its room is still open after the end, so
+ * people can get back in.
+ */
+export async function listUpcomingSessions(
+  userId: string,
+  as: "STUDENT" | "TEACHER",
+  now = new Date(),
+  { limit = 5, includeOpenRooms = false }: { limit?: number; includeOpenRooms?: boolean } = {},
+) {
+  const graceStart = new Date(now.getTime() - JOIN_CLOSES_MINUTES_AFTER * 60_000);
   const sessions = await db.tutoringSession.findMany({
     where: {
       status: { in: [...LIVE] },
-      endsAt: { gt: now },
+      OR: [{ endsAt: { gt: now } }, ...(includeOpenRooms ? [{ status: "CONFIRMED" as const, endsAt: { gt: graceStart } }] : [])],
       connection: as === "STUDENT" ? { studentId: userId, status: { in: ["ACTIVE", "PENDING"] } } : { teacherId: userId, status: { in: ["ACTIVE", "PENDING"] } },
     },
     orderBy: { startsAt: "asc" },

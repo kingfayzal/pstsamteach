@@ -2,6 +2,9 @@ import "server-only";
 import { BOOKING_HORIZON_DAYS, findBookableSlot } from "@/lib/scheduling";
 import { bookingSchema, cancelSchema } from "@/lib/validation/teacher";
 import { db } from "@/server/db";
+import { getVideoProvider, type VideoProvider } from "@/server/video";
+import { requireConfirmedEmail } from "./email-confirmation";
+import { closeLiveRooms } from "./live-sessions";
 import { busyIntervals, loadSchedulingProfile, lockSchedules } from "./teacher-common";
 import { type Actor, fail, forbidden, invalid, isActiveRole, notFound, ok, type ServiceResult } from "./result";
 
@@ -22,6 +25,8 @@ export async function bookSession(
   });
   if (!connection || connection.studentId !== actor.id) return notFound("That teacher");
   if (connection.status !== "ACTIVE") return fail("CONFLICT", "You can book sessions once the teacher has accepted you.");
+  const unconfirmed = await requireConfirmedEmail(actor);
+  if (unconfirmed) return unconfirmed;
 
   const parsed = bookingSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
@@ -56,8 +61,14 @@ export async function bookSession(
   return ok({ sessionId: session.id });
 }
 
-/** Either side cancels a session that hasn't started yet. */
-export async function cancelSession(actor: Actor, sessionId: string, input: unknown = {}, now = new Date()): Promise<ServiceResult<null>> {
+/** Either side cancels a session that hasn't started yet; anyone already in its video room is let go. */
+export async function cancelSession(
+  actor: Actor,
+  sessionId: string,
+  input: unknown = {},
+  now = new Date(),
+  provider: VideoProvider | null = getVideoProvider(),
+): Promise<ServiceResult<null>> {
   const session = await db.tutoringSession.findUnique({
     where: { id: sessionId },
     select: { id: true, status: true, startsAt: true, connection: { select: { studentId: true, teacherId: true } } },
@@ -73,5 +84,6 @@ export async function cancelSession(actor: Actor, sessionId: string, input: unkn
     where: { id: sessionId },
     data: { status: "CANCELLED", cancelledById: actor.id, cancelReason: parsed.data.reason },
   });
+  await closeLiveRooms({ sessionId }, now, provider);
   return ok(null);
 }

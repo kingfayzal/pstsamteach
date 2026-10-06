@@ -17,5 +17,19 @@ services:
       timeout: 3s
       retries: 30
 
+  # Local LiveKit server for video sessions. Start with `npm run livekit:up`.
+  # It uses the same key and secret as the app, from .env (see .env.example).
+  # The "video" profile keeps it out of a plain `docker compose up`.
+  livekit:
+    image: livekit/livekit-server:v1.13.7
+    profiles: ["video"]
+    command: ["--dev", "--bind", "0.0.0.0", "--node-ip", "127.0.0.1"]
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:-}: ${LIVEKIT_API_SECRET:-}"
+    ports:
+      - "127.0.0.1:7880:7880"
+      - "127.0.0.1:7881:7881"
+      - "127.0.0.1:7882:7882/udp"
+
 volumes:
   pgdata:

@@ -1,33 +1,14 @@
 import type { NextConfig } from "next";
+import { assertEmailReadyForDeploy } from "./src/lib/email/config";
+import { parseLiveKitConfig } from "./src/lib/live-sessions";
+import { securityHeaderRules } from "./src/lib/security-headers";
 
 const isDev = process.env.NODE_ENV !== "production";
 
-/** Lesson videos may only be framed from these hosts (see src/lib/video.ts). */
-const VIDEO_FRAME_SOURCES = "https://www.youtube-nocookie.com https://player.vimeo.com";
-
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self'",
-  `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
-  `frame-src ${VIDEO_FRAME_SOURCES}`,
-  "frame-ancestors 'none'",
-  "form-action 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-].join("; ");
-
-const securityHeaders = [
-  { key: "Content-Security-Policy", value: contentSecurityPolicy },
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "X-Frame-Options", value: "DENY" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
-  // No "preload": that is hard to undo; add it once the production domain is final.
-  ...(isDev ? [] : [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }]),
-];
+// Throws on a half-finished LiveKit setup, so a bad deploy fails at build time.
+const liveKit = parseLiveKitConfig(process.env);
+// Same for email: a production deploy that can't send would leave nobody able to confirm an address or reset a password.
+assertEmailReadyForDeploy(process.env);
 
 const nextConfig: NextConfig = {
   // Lets the E2E server build into its own folder alongside a running dev server.
@@ -42,7 +23,7 @@ const nextConfig: NextConfig = {
     serverActions: { bodySizeLimit: "3mb" },
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return securityHeaderRules({ isDev, liveKitUrl: liveKit?.url });
   },
 };
 

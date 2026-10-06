@@ -22,10 +22,13 @@ export async function resetDb(): Promise<void> {
   await db.user.deleteMany();
   await db.subject.deleteMany();
   await db.rateLimit.deleteMany();
+  await db.emailOutbox.deleteMany();
+  await db.accountToken.deleteMany();
 }
 
+/** Users have a confirmed email address unless a test says otherwise (`confirmed: false`). */
 export async function makeUser(
-  overrides: Partial<{ role: Role; status: UserStatus; name: string; email: string }> = {},
+  overrides: Partial<{ role: Role; status: UserStatus; name: string; email: string; confirmed: boolean }> = {},
 ): Promise<Actor> {
   const n = next();
   return db.user.create({
@@ -34,6 +37,7 @@ export async function makeUser(
       email: overrides.email ?? `user${n}@example.com`,
       role: overrides.role ?? "STUDENT",
       status: overrides.status ?? "ACTIVE",
+      emailVerifiedAt: overrides.confirmed === false ? null : new Date(),
       passwordHash: await passwordHash(),
     },
     select: { id: true, name: true, email: true, role: true, status: true },

@@ -1,7 +1,10 @@
 /**
  * Vercel build (vercel.json sets this as the build command): on production
- * deploys only, apply database migrations and the demo data switch, then
- * build. Preview deploys skip both so a branch can never change production.
+ * deploys, apply database migrations and the demo data switch, then build.
+ *
+ * Preview deploys skip both, so a branch can never change production, with one
+ * opt-in: the staging deploy of the dev branch, which has its own database, sets
+ * MIGRATE_ON_DEPLOY=1 in its branch-scoped Preview variables (see README).
  */
 import { execSync } from "node:child_process";
 
@@ -10,9 +13,12 @@ const run = (command, env = {}) => execSync(command, { stdio: "inherit", env: { 
 // Regenerate the client first, in case the install step was served from cache.
 run("npx prisma generate");
 
-if (process.env.VERCEL_ENV === "production") {
+const production = process.env.VERCEL_ENV === "production";
+const staging = process.env.VERCEL_ENV === "preview" && process.env.MIGRATE_ON_DEPLOY === "1";
+
+if (production || staging) {
   if (!process.env.DIRECT_URL && !process.env.DATABASE_URL) {
-    console.error("DIRECT_URL (or DATABASE_URL) must be set for production deploys.");
+    console.error(`DIRECT_URL (or DATABASE_URL) must be set for ${production ? "production" : "staging"} deploys.`);
     process.exit(1);
   }
   run("npx prisma migrate deploy");

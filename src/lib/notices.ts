@@ -3,7 +3,9 @@
  * this list render, so the query string can't inject arbitrary text.
  */
 export const NOTICES = {
-  welcome: "Your account is ready. Pick a course from the catalog to get started.",
+  "email-confirmed": "Email address confirmed. Your account is ready.",
+  "email-changed": "Address changed. We've sent a new link to it.",
+  "password-reset": "Password changed. You're signed in, and every other device has been signed out.",
   enrolled: "Enrolled. Your first lesson is waiting below.",
   "course-created": "Course created as a draft. Add lessons, then submit it for review.",
   "lesson-added": "Lesson added.",

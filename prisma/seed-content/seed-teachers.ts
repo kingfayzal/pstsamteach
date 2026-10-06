@@ -14,15 +14,26 @@ function pastAt(daysAgo: number, hour: number, timeZone: string): Date {
   return zonedTimeToUtc({ ...date, hour, minute: 0 }, timeZone);
 }
 
+/** Topic ids keyed "subject/name": names like "Other" repeat across subjects. */
+const topicKey = (subject: string, name: string) => `${subject}/${name}`;
+
 async function createTopics(db: ReturnType<typeof createPrismaClient>, subjectIds: Ids): Promise<Ids> {
   const topicIds: Ids = {};
   for (const [subject, names] of Object.entries(TOPICS)) {
     for (const [position, name] of names.entries()) {
-      const topic = await db.topic.create({ data: { subjectId: subjectIds[subject], name, slug: slugify(name), position: position + 1 } });
-      topicIds[name] = topic.id;
+      const topic = await db.topic.create({ data: { subjectId: subjectIds[subject], name, slug: slugify(name, "topic"), position: position + 1 } });
+      topicIds[topicKey(subject, name)] = topic.id;
     }
   }
   return topicIds;
+}
+
+/** The id of one of a teacher's own topics; a typo fails the seed instead of seeding a request with no topic. */
+function teacherTopicId(spec: TeacherSeed, name: string, topicIds: Ids): string {
+  const group = spec.topics.find((t) => t.names.includes(name));
+  const id = group ? topicIds[topicKey(group.subject, name)] : undefined;
+  if (!id) throw new Error(`Seed: ${spec.name} doesn't teach "${name}".`);
+  return id;
 }
 
 async function createProfile(db: ReturnType<typeof createPrismaClient>, teacherId: string, spec: TeacherSeed, topicIds: Ids) {
@@ -39,7 +50,7 @@ async function createProfile(db: ReturnType<typeof createPrismaClient>, teacherI
       sessionMinutes: spec.sessionMinutes,
       acceptingStudents: spec.acceptingStudents,
       meetingUrl: `https://meet.example.com/${slugify(spec.name)}`,
-      topics: { create: spec.topics.flatMap((t) => t.names.map((name) => ({ topicId: topicIds[name] }))) },
+      topics: { create: spec.topics.flatMap((t) => t.names.map((name) => ({ topicId: topicIds[topicKey(t.subject, name)] }))) },
       languages: { create: spec.languages.map((language) => ({ language })) },
       availability: { create: spec.windows },
       createdAt: new Date(Date.now() - 30 * DAY),
@@ -58,7 +69,7 @@ export async function seedTeachers(db: ReturnType<typeof createPrismaClient>, id
   for (const spec of TEACHERS) {
     if (!spec.isExisting) {
       const user = await db.user.create({
-        data: { name: spec.name, email: spec.email, passwordHash, role: "TEACHER", status: "ACTIVE", createdAt: new Date(Date.now() - 32 * DAY) },
+        data: { name: spec.name, email: spec.email, passwordHash, role: "TEACHER", status: "ACTIVE", emailVerifiedAt: new Date(Date.now() - 32 * DAY), createdAt: new Date(Date.now() - 32 * DAY) },
       });
       teacherIds[spec.key] = user.id;
     }
@@ -72,7 +83,7 @@ export async function seedTeachers(db: ReturnType<typeof createPrismaClient>, id
         studentId: ids[student],
         teacherId: teacherIds[teacher],
         status,
-        topicId: topicIds[topic],
+        topicId: teacherTopicId(spec(teacher), topic, topicIds),
         goals,
         createdAt: new Date(Date.now() - daysAgo * DAY),
         respondedAt: status === "PENDING" ? null : new Date(Date.now() - (daysAgo - 0.5) * DAY),
@@ -109,27 +120,27 @@ export async function seedTeachers(db: ReturnType<typeof createPrismaClient>, id
   }
 
   // Ada has also asked Daniel, with a first session proposed.
-  const adaDaniel = await connect("ada", "daniel", "PENDING", "Algebra", "I need to pass a maths entrance test for my nursing top-up course. I haven't done algebra since school.", 1);
+  const adaDaniel = await connect("ada", "daniel", "PENDING", "Algebra I & II", "I need to pass a maths entrance test for my nursing top-up course. I haven't done algebra since school.", 1);
   const danielSlots = openSlots(spec("daniel"));
   if (danielSlots[1]) await session(adaDaniel.id, "daniel", danielSlots[1].start, "REQUESTED", "Solving equations");
 
   // Other students, for realistic numbers and reviews.
   const kemiRuth = await connect("kemi", "ruth", "ACTIVE", "Licensing exam preparation", "Preparing for my licensing exam and want timed practice on calculations.", 20);
   await session(kemiRuth.id, "ruth", pastAt(6, 10, "Africa/Accra"));
-  const tomiGrace = await connect("tomi", "grace", "ACTIVE", "Grammar and punctuation", "I want my reports at work to read more professionally.", 10);
+  const tomiGrace = await connect("tomi", "grace", "ACTIVE", "Grammar", "I want my reports at work to read more professionally.", 10);
   await session(tomiGrace.id, "grace", pastAt(4, 19, "Africa/Lagos"), "CONFIRMED", "Comma splices");
   const graceSlots = openSlots(spec("grace"));
   if (graceSlots[2]) await session(tomiGrace.id, "grace", graceSlots[2].start, "CONFIRMED", "Report structure");
   await db.message.create({
     data: { connectionId: tomiGrace.id, senderId: teacherIds.grace, body: "Send me your latest report before Thursday and we'll mark it together.", createdAt: new Date(Date.now() - 2 * DAY) },
   });
-  const zainabDaniel = await connect("zainab", "daniel", "ACTIVE", "Exam preparation", "Retaking my maths exam in June.", 8);
+  const zainabDaniel = await connect("zainab", "daniel", "ACTIVE", "WAEC (West Africa)", "Retaking my maths exam in June.", 8);
   await session(zainabDaniel.id, "daniel", pastAt(3, 17, "Africa/Lagos"));
   const chidiKwame = await connect("chidi", "kwame", "ENDED", "Statistics", "Stats module for my public health degree.", 13, { endedAt: new Date(Date.now() - 2 * DAY), endedById: ids.chidi });
   await session(chidiKwame.id, "kwame", pastAt(7, 19, "Africa/Accra"));
-  const halimaBlessing = await connect("halima", "blessing", "ACTIVE", "Spoken English", "I have job interviews coming up and freeze when speaking.", 4);
+  const halimaBlessing = await connect("halima", "blessing", "ACTIVE", "Oral English", "I have job interviews coming up and freeze when speaking.", 4);
   await session(halimaBlessing.id, "blessing", pastAt(1, 8, "Africa/Lagos"));
-  const emekaYusuf = await connect("emeka", "yusuf", "ACTIVE", "Arithmetic", "Going back to college and need to brush up on percentages.", 6);
+  const emekaYusuf = await connect("emeka", "yusuf", "ACTIVE", "Basic Math", "Going back to college and need to brush up on percentages.", 6);
   await session(emekaYusuf.id, "yusuf", pastAt(3, 10, "Africa/Lagos"));
   const funmiBisi = await connect("funmi", "bisi", "ACTIVE", "Greetings and conversation", "My parents speak Yoruba at home. I understand most of it but always answer in English, and I want to reply in Yoruba.", 10);
   await session(funmiBisi.id, "bisi", pastAt(6, 18, "America/New_York"), "CONFIRMED", "Greetings and respect");

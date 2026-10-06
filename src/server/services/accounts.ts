@@ -11,6 +11,8 @@ import { isValidTimeZone } from "@/lib/time-zones";
 import { timeZoneSchema } from "@/lib/validation/teacher";
 import { getDummyHash, hashPassword, verifyPassword } from "@/server/auth/password";
 import { db } from "@/server/db";
+import { absoluteUrl, enqueueEmail } from "@/server/email";
+import { queueConfirmationEmail } from "./email-confirmation";
 import { type Actor, fail, invalid, ok, type ServiceResult } from "./result";
 
 export const actorSelect = { id: true, name: true, email: true, role: true, status: true } as const;
@@ -28,15 +30,17 @@ async function emailTaken(email: string): Promise<boolean> {
   return (await db.user.count({ where: { email } })) > 0;
 }
 
-export async function registerStudent(input: unknown): Promise<ServiceResult<Actor>> {
+export async function registerStudent(input: unknown, now = new Date()): Promise<ServiceResult<Actor>> {
   const parsed = signupSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
   const { name, email, password } = parsed.data;
   if (await emailTaken(email)) return fail("CONFLICT", EMAIL_TAKEN, { email: [EMAIL_TAKEN] });
+  const passwordHash = await hashPassword(password);
   try {
-    const user = await db.user.create({
-      data: { name, email, passwordHash: await hashPassword(password), role: "STUDENT", status: "ACTIVE" },
-      select: actorSelect,
+    const user = await db.$transaction(async (tx) => {
+      const created = await tx.user.create({ data: { name, email, passwordHash, role: "STUDENT", status: "ACTIVE" }, select: actorSelect });
+      await queueConfirmationEmail(tx, created, { kind: "welcome" }, now);
+      return created;
     });
     return ok(user);
   } catch (error) {
@@ -45,29 +49,26 @@ export async function registerStudent(input: unknown): Promise<ServiceResult<Act
   }
 }
 
-export async function applyToTeach(input: unknown): Promise<ServiceResult<Actor>> {
+export async function applyToTeach(input: unknown, now = new Date()): Promise<ServiceResult<Actor>> {
   const parsed = teacherApplicationSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
   const { name, email, password, subjectId, applicationNote } = parsed.data;
 
-  const subject = await db.subject.findFirst({ where: { id: subjectId, isActive: true }, select: { id: true } });
+  const subject = await db.subject.findFirst({ where: { id: subjectId, isActive: true }, select: { id: true, name: true } });
   if (!subject) {
     return fail("INVALID", "Choose one of the listed subjects.", { subjectId: ["Choose one of the listed subjects."] });
   }
   if (await emailTaken(email)) return fail("CONFLICT", EMAIL_TAKEN, { email: [EMAIL_TAKEN] });
 
+  const passwordHash = await hashPassword(password);
   try {
-    const user = await db.user.create({
-      data: {
-        name,
-        email,
-        passwordHash: await hashPassword(password),
-        role: "TEACHER",
-        status: "PENDING",
-        applicationNote,
-        applicationSubjectId: subject.id,
-      },
-      select: actorSelect,
+    const user = await db.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: { name, email, passwordHash, role: "TEACHER", status: "PENDING", applicationNote, applicationSubjectId: subject.id },
+        select: actorSelect,
+      });
+      await queueConfirmationEmail(tx, created, { kind: "teacher-application", subjectName: subject.name }, now);
+      return created;
     });
     return ok(user);
   } catch (error) {
@@ -111,7 +112,16 @@ export async function changePassword(actor: Actor, input: unknown): Promise<Serv
     const message = "Your current password isn't right.";
     return fail("INVALID", message, { currentPassword: [message] });
   }
-  await db.user.update({ where: { id: actor.id }, data: { passwordHash: await hashPassword(parsed.data.newPassword) } });
+  const passwordHash = await hashPassword(parsed.data.newPassword);
+  await db.$transaction(async (tx) => {
+    const user = await tx.user.update({ where: { id: actor.id }, data: { passwordHash }, select: { name: true, email: true } });
+    // If someone else changed it, this tells the owner while they can still act.
+    await enqueueEmail(tx, {
+      to: user.email,
+      userId: actor.id,
+      message: { kind: "password-changed", data: { name: user.name, resetUrl: absoluteUrl("/forgot-password") } },
+    });
+  });
   return ok(null);
 }
 

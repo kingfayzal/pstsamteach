@@ -56,3 +56,12 @@ export const loginLimiter = createRateLimiter({ name: "login", limit: 8, windowM
 export const signupLimiter = createRateLimiter({ name: "signup", limit: 6, windowMs: HOUR });
 export const requestLimiter = createRateLimiter({ name: "request", limit: 10, windowMs: HOUR });
 export const messageLimiter = createRateLimiter({ name: "message", limit: 30, windowMs: 10 * MINUTE });
+/** Emails sent on request. Per address as well as per IP, so nobody's inbox can be flooded. */
+export const confirmationEmailLimiter = createRateLimiter({ name: "confirm-email", limit: 3, windowMs: HOUR });
+export const passwordResetLimiter = createRateLimiter({ name: "password-reset", limit: 5, windowMs: HOUR });
+/**
+ * Video rooms. Joining and the in-call chat have separate budgets, so a flood of
+ * chat refreshes (which the other person can trigger) never locks anyone out of rejoining.
+ */
+export const liveJoinLimiter = createRateLimiter({ name: "live-join", limit: 30, windowMs: 10 * MINUTE });
+export const callChatLimiter = createRateLimiter({ name: "call-chat", limit: 300, windowMs: 10 * MINUTE });

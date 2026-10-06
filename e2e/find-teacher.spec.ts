@@ -73,11 +73,11 @@ test("a student chooses a teacher, the teacher accepts, and they work together",
   await expect(teacher.getByText(/Accepted\. You're now working together/)).toBeVisible();
   await expect(teacher.getByText("Confirmed", { exact: true })).toBeVisible();
 
-  // The student sees the confirmed session with the meeting link, and they talk.
+  // The student sees the confirmed session with a link to its video room, and they talk.
   await student.goto(connectionUrl);
   await expect(student.getByText("Working together")).toBeVisible();
   await expect(student.getByText(slotTime, { exact: false }).first()).toBeVisible();
-  await expect(student.getByRole("link", { name: "Join the session" })).toHaveAttribute("href", "https://meet.example.com/amaka-nwosu");
+  await expect(student.getByRole("link", { name: "Join the session" })).toHaveAttribute("href", /^\/sessions\/[a-z0-9]+$/);
   await student.getByLabel("Message Amaka").fill("Thank you! See you then.");
   await student.getByRole("button", { name: "Send message" }).click();
   await expect(student.getByText("Thank you! See you then.")).toBeVisible();

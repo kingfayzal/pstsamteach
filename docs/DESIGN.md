@@ -161,3 +161,30 @@ with. Preply-style discovery, in the same exercise-book language.
 - **Copy:** "Choose Ruth as your teacher", "Send request to Ruth", "Accept
   Kemi", "Book this session". Actions keep their verb through the confirmation
   notices.
+
+---
+
+# Phase 3: the session room
+
+A call should feel like sitting down at the same desk, not like opening another app.
+
+- **Its own page, no side rail.** `/sessions/[id]` keeps only the wordmark bar, so
+  the call gets the screen on phones.
+- **Camera check on paper.** Before joining you see yourself on a dark panel, with
+  plain "Camera on" and "Microphone on" checkboxes and a note that camera-off uses far
+  less data. One primary button: "Join the session".
+- **The stage is deep ink, like a slate.** Inside the call the surface switches to
+  `ink-deep`, so faces and shared work read well. The other person (or their shared
+  screen) fills the stage, and you sit in a small tile in the corner. LiveKit's
+  components are dressed through their `--lk-*` variables in `globals.css`: paper text,
+  6px control corners, a paper outline when someone speaks. Green stays reserved for
+  "done", so it isn't used for "speaking" or "connected".
+- **Controls sit left-aligned**, with "Leave" alone on the right as the one solid red
+  button, since leaving is the only final action. On phones the control labels collapse
+  to icons and stay in the accessibility tree.
+- **Chat slides in beside the call** (over it on phones) and says plainly that it's
+  saved to your messages. Unread pings show as "1 new" on the Chat button.
+- **The backup link is quiet:** "Trouble connecting? Use Ruth's backup meeting link",
+  in small text at the top of the stage and in the camera check.
+- **Past sessions** gain one plain line under the time: "In the video room: you 52 min,
+  Kemi 50 min." No marks or ticks; attendance isn't marking.

@@ -23,12 +23,25 @@ export function BrandMark({ className = "" }: { className?: string }) {
   );
 }
 
-/** The mark and the name. */
-export function Wordmark({ href = "/", className = "" }: { href?: string; className?: string }) {
-  return (
-    <Link href={href} className={`inline-flex items-center gap-2 text-ink ${className}`} aria-label={`${SITE.name} home`}>
+/**
+ * The mark and the name. `reload` makes it a full page load, for pages such as
+ * video rooms whose browser permissions shouldn't carry over to the next page.
+ */
+export function Wordmark({ href = "/", className = "", reload = false }: { href?: string; className?: string; reload?: boolean }) {
+  const classes = `inline-flex items-center gap-2 text-ink ${className}`;
+  const content = (
+    <>
       <BrandMark className="h-7 w-auto shrink-0" />
       <span className="text-2xl leading-none font-extrabold tracking-[-0.035em]">{SITE.name}</span>
+    </>
+  );
+  return reload ? (
+    <a href={href} className={classes} aria-label={`${SITE.name} home`}>
+      {content}
+    </a>
+  ) : (
+    <Link href={href} className={classes} aria-label={`${SITE.name} home`}>
+      {content}
     </Link>
   );
 }

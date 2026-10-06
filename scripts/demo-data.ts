@@ -207,7 +207,8 @@ async function upsertDemoSubjects(tx: Tx): Promise<Map<string, string[]>> {
 
 /** Add or update an active account with `passwordHash`, signing it out everywhere. Returns its id. */
 async function upsertAccount(tx: Tx, account: { name: string; email: string; role: Role; timeZone: string }, passwordHash: string): Promise<string> {
-  const fields = { name: account.name, role: account.role, status: "ACTIVE" as const, timeZone: account.timeZone, passwordHash };
+  // Demo addresses can't receive mail, so they start out confirmed (requesting, booking and messaging need it).
+  const fields = { name: account.name, role: account.role, status: "ACTIVE" as const, timeZone: account.timeZone, passwordHash, emailVerifiedAt: new Date() };
   const user = await tx.user.upsert({ where: { email: account.email }, create: { email: account.email, ...fields }, update: fields, select: { id: true } });
   await tx.session.deleteMany({ where: { userId: user.id } });
   return user.id;
