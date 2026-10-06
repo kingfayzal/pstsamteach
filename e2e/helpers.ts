@@ -39,6 +39,13 @@ export function formAlert(page: Page) {
  * <img> on the page, which is often a teacher's photo.
  */
 export async function expectBrandShareImage(page: Page, request: APIRequestContext): Promise<void> {
+  // Once the page has hydrated there must be exactly one of each: streamed metadata used to
+  // be rendered a second time in the browser, which only showed up when the check was slow.
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator("title")).toHaveCount(1);
+  await expect(page.locator('meta[property="og:image"]')).toHaveCount(1);
+  await expect(page.locator('meta[name="twitter:image"]')).toHaveCount(1);
+
   const og = await page.locator('meta[property="og:image"]').getAttribute("content");
   const url = new URL(og ?? "");
   expect(url.origin).toBe("https://www.xcelstudy.com");
