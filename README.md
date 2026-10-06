@@ -194,18 +194,21 @@ Email goes out straight after the action that triggers it. If Resend fails, it's
 
 `dev` deploys to its own Vercel Preview with its own database, so every change can be tried before it reaches production.
 
-1. Create a second Supabase project (for example `xcel-study-staging`), in the same region, and copy its two pooler strings as in step 1.
-2. In Vercel, add variables scoped to **Preview** and the Git branch **`dev`** (pick the branch when adding each one):
+1. Create a staging database, never production's. Either:
+   - **Supabase:** a second project (for example `xcel-study-staging`) in the same region; copy its two pooler strings as in step 1. The free plan allows only two projects.
+   - **Neon** (what staging uses now; free plan, [neon.com](https://neon.com)): create a project with only **Postgres database** switched on, Postgres 17, in the region nearest your Vercel functions. Under **Connect**, with **Show password** on, copy the string with **Connection pooling** on (its host has `-pooler`) for `DATABASE_URL`, and with pooling off for `DIRECT_URL`. Delete `&channel_binding=require` from the end of both: Prisma's migrations can't handle it. Connect it by hand with the variables below, not Neon's Vercel integration, which would attach it to every preview branch. A free Neon database sleeps after 5 idle minutes, so the first visit after a break takes a second longer.
+2. In Vercel, add variables scoped to **Preview** and the Git branch **`dev`** (pick the branch when adding each one). Vercel won't take a second variable with the same name for an environment one already covers: production's `DATABASE_URL`, `DIRECT_URL`, `EMAIL_FROM` and so on must be scoped to **Production** only, not "Production and Preview", before their `dev` copies can be added.
 
    | Variable | Value |
    | --- | --- |
-   | `DATABASE_URL`, `DIRECT_URL` | The staging project's pooler strings, never production's |
+   | `DATABASE_URL`, `DIRECT_URL` | The staging database's pooled and direct strings, never production's |
    | `MIGRATE_ON_DEPLOY` | `1`: lets this branch's deploys apply migrations and the demo data switch to the staging database |
    | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | Optional: a second LiveKit project's, so staging calls never mix with production's |
    | `RESEND_API_KEY`, `EMAIL_FROM` | The staging key and the same sender. Without them, emails are written to the function logs instead of sent, so new staging accounts can't confirm their address |
    | `APP_URL` | Optional: the staging address (e.g. `https://staging.xcelstudy.com`) if you give `dev` a domain. Otherwise links use the branch's Vercel address |
 
-3. Optional: under **Settings → Domains**, give `dev` a stable address such as `staging.xcelstudy.com`, and under **Settings → Deployment Protection** keep previews behind Vercel login. A protected preview can't receive LiveKit webhooks, so attendance isn't recorded on staging unless you add a protection bypass for them.
+3. Redeploy `dev` (**Deployments**, the newest `dev` deploy, **⋯ → Redeploy**). The build log should list the migrations being applied and print the demo accounts. Staging is at `https://<project>-git-dev-<team>.vercel.app` (Vercel login required). To make yourself an admin there, run `npm run create-admin` (see "3. First admin" above) with `DATABASE_URL` set to the staging direct string.
+4. Optional: under **Settings → Domains**, give `dev` a stable address such as `staging.xcelstudy.com`, and under **Settings → Deployment Protection** keep previews behind Vercel login. A protected preview can't receive LiveKit webhooks, so attendance isn't recorded on staging unless you add a protection bypass for them.
 
 ## Branches and releases
 
