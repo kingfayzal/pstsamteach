@@ -203,8 +203,11 @@ daily cron /api/cron/emails: send anything due, prune expired links and old rows
 
 - Links in emails point at `APP_URL`, else Vercel's production or branch domain, never the request host.
 - Confirmation links last 3 days, reset links one hour; both are single use and tied to the address they went to.
-- Unconfirmed accounts can sign in and browse, but can't request a teacher, accept a student, book or
-  send messages (`requireConfirmedEmail`). Declining and cancelling stay open. A banner offers a new link.
+- Every role waits for a confirmed address. `requireUser`/`requireRole` send an unconfirmed account to
+  `/check-email` (new link, fix a mistyped address, log out) from every signed-in page and action; only that
+  page and its actions opt out (`allowUnconfirmed`). Confirming lands on the account's dashboard. Public
+  pages stay readable, with a banner. Requesting, accepting, booking and messaging also refuse an
+  unconfirmed address in the service layer (`requireConfirmedEmail`), as a second line.
 - Using a reset link confirms the address, voids other reset links and signs out every device.
 - "Forgot your password?" gives the same answer for any address and is rate limited per IP and per address.
 - Without Resend configured, email is printed to the server log (never on production, which won't build without it).

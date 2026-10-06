@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatDate, formatMinutes, formatRelative, plural, toDateTimeLocal } from "@/lib/format";
-import { homePathFor, safeNextPath } from "@/lib/routes";
+import { CHECK_EMAIL_PATH, homePathFor, safeNextPath, signedInGate } from "@/lib/routes";
 
 describe("safeNextPath", () => {
   it("allows same-site paths", () => {
@@ -18,6 +18,26 @@ describe("homePathFor", () => {
     expect(homePathFor({ role: "TEACHER", status: "ACTIVE" })).toBe("/teach");
     expect(homePathFor({ role: "TEACHER", status: "PENDING" })).toBe("/teach/pending");
     expect(homePathFor({ role: "ADMIN", status: "ACTIVE" })).toBe("/admin");
+  });
+});
+
+describe("signedInGate", () => {
+  it("sends visitors without a session to log in", () => {
+    expect(signedInGate(null)).toBe("/login");
+    expect(signedInGate(null, { allowUnconfirmed: true })).toBe("/login");
+  });
+
+  it("holds every unconfirmed account at the confirm-your-email page", () => {
+    expect(CHECK_EMAIL_PATH).toBe("/check-email");
+    expect(signedInGate({ emailConfirmed: false })).toBe(CHECK_EMAIL_PATH);
+  });
+
+  it("lets unconfirmed accounts through only where asked (the confirm page itself)", () => {
+    expect(signedInGate({ emailConfirmed: false }, { allowUnconfirmed: true })).toBeNull();
+  });
+
+  it("lets confirmed accounts through", () => {
+    expect(signedInGate({ emailConfirmed: true })).toBeNull();
   });
 });
 

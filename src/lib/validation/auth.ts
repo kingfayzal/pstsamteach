@@ -54,6 +54,9 @@ export const passwordChangeSchema = z
 
 export const passwordResetRequestSchema = z.object({ email: emailSchema });
 
+/** Correcting a mistyped address before it has been confirmed. */
+export const emailChangeSchema = z.object({ email: emailSchema });
+
 export const passwordResetSchema = z
   .object({
     token: z.string().min(1, "This reset link is incomplete. Open it from the email again.").max(100),

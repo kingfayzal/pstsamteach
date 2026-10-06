@@ -1,8 +1,9 @@
 import "server-only";
+import { emailChangeSchema } from "@/lib/validation/auth";
 import { findAccountToken, isUsable, issueAccountToken, spendAccountToken } from "@/server/auth/account-tokens";
 import { db, type Tx } from "@/server/db";
 import { absoluteUrl, enqueueEmail } from "@/server/email";
-import { type Actor, fail, forbidden, notFound, ok, type ServiceError, type ServiceResult } from "./result";
+import { type Actor, fail, forbidden, invalid, notFound, ok, type ServiceError, type ServiceResult } from "./result";
 
 type Recipient = { id: string; name: string; email: string };
 
@@ -34,6 +35,42 @@ export async function resendConfirmationEmail(actor: Actor, now = new Date()): P
   return ok({ email: user.email });
 }
 
+const ADDRESS_TAKEN = "Another account already uses that address. Log in to it instead, or use a different address.";
+const SAME_ADDRESS = "That's the address we already have. Send a new link to it instead.";
+
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code: string }).code === "P2002";
+}
+
+/**
+ * Fix a mistyped address before it's confirmed: the account moves to the new
+ * address and a fresh link goes there. Links sent to the old address stop
+ * working, because a link only counts for the address it went to. Once an
+ * address is confirmed it can't be changed here.
+ */
+export async function changeUnconfirmedEmail(actor: Actor, input: unknown, now = new Date()): Promise<ServiceResult<{ email: string }>> {
+  if (actor.status === "SUSPENDED") return forbidden();
+  const parsed = emailChangeSchema.safeParse(input);
+  if (!parsed.success) return invalid(parsed.error);
+  const user = await db.user.findUnique({ where: { id: actor.id }, select: { id: true, email: true, emailVerifiedAt: true } });
+  if (!user) return notFound("Your account");
+  if (user.emailVerifiedAt) return fail("CONFLICT", "Your email address is already confirmed.");
+  const { email } = parsed.data;
+  if (email === user.email) return fail("INVALID", SAME_ADDRESS, { email: [SAME_ADDRESS] });
+  if ((await db.user.count({ where: { email } })) > 0) return fail("CONFLICT", ADDRESS_TAKEN, { email: [ADDRESS_TAKEN] });
+
+  try {
+    await db.$transaction(async (tx) => {
+      const moved = await tx.user.update({ where: { id: user.id }, data: { email }, select: { id: true, name: true, email: true } });
+      await queueConfirmationEmail(tx, moved, { kind: "confirm-email" }, now);
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) return fail("CONFLICT", ADDRESS_TAKEN, { email: [ADDRESS_TAKEN] });
+    throw error;
+  }
+  return ok({ email });
+}
+
 export type ConfirmOutcome = "confirmed" | "already-confirmed";
 
 const LINK_GONE = "This confirmation link has expired or doesn't work any more.";
@@ -61,14 +98,16 @@ export async function confirmEmail(token: unknown, now = new Date()): Promise<Se
 }
 
 /**
- * Requesting a teacher, booking and messaging wait until the address is confirmed,
- * so teachers only hear from people we can reach. Returns the refusal, or null to go ahead.
+ * Requesting a teacher, accepting a student, booking and messaging refuse an
+ * unconfirmed address. Unconfirmed accounts are already held at the confirm page
+ * (requireUser); this is the same rule enforced where the change happens, in case
+ * a caller ever skips that. Returns the refusal, or null to go ahead.
  */
 export async function requireConfirmedEmail(actor: Actor): Promise<ServiceError | null> {
   const user = await db.user.findUnique({ where: { id: actor.id }, select: { email: true, emailVerifiedAt: true } });
   if (user?.emailVerifiedAt) return null;
   return fail(
     "FORBIDDEN",
-    `Confirm your email address first: open the link we sent to ${user?.email ?? actor.email}. You can send a new link from your Account page.`,
+    `Confirm your email address first: open the link we sent to ${user?.email ?? actor.email}.`,
   );
 }

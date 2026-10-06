@@ -7,7 +7,7 @@ import type { EmailTransport, OutgoingEmail, SendResult } from "@/server/email/t
 import { applyToTeach, authenticate, changePassword, registerStudent } from "@/server/services/accounts";
 import { approveTeacher, declineTeacher, reactivateUser, suspendUser } from "@/server/services/admin";
 import { requestTeacher, respondToRequest } from "@/server/services/connections";
-import { confirmEmail, resendConfirmationEmail } from "@/server/services/email-confirmation";
+import { changeUnconfirmedEmail, confirmEmail, resendConfirmationEmail } from "@/server/services/email-confirmation";
 import { checkPasswordResetLink, requestPasswordReset, resetPassword } from "@/server/services/password-reset";
 import { sendMessage } from "@/server/services/teacher-social";
 import { bookSession } from "@/server/services/tutoring";
@@ -245,6 +245,35 @@ describe("confirming an email address", () => {
     expect(await resendConfirmationEmail(student, NOW)).toMatchObject({ ok: false, code: "CONFLICT" });
     const suspended = await makeUser({ confirmed: false, status: "SUSPENDED" });
     expect(await resendConfirmationEmail(suspended, NOW)).toMatchObject({ ok: false, code: "FORBIDDEN" });
+  });
+});
+
+describe("fixing a mistyped address before confirming", () => {
+  it("moves the account to the new address and sends the link there; links to the old one stop working", async () => {
+    const created = await registerStudent({ name: "Ada Obi", email: "ada@exmaple.com", password: TEST_PASSWORD }, NOW);
+    if (!created.ok) throw new Error(created.message);
+    const oldToken = tokenIn((await onlyEmail("welcome", "ada@exmaple.com")).payload, "confirmUrl");
+
+    expect(await changeUnconfirmedEmail(created.data, { email: " Ada@Example.com " }, NOW)).toEqual({ ok: true, data: { email: "ada@example.com" } });
+    expect((await db.user.findUniqueOrThrow({ where: { id: created.data.id } })).email).toBe("ada@example.com");
+    const fresh = await onlyEmail("confirm-email", "ada@example.com");
+
+    expect(await confirmEmail(oldToken, NOW)).toMatchObject({ ok: false, code: "INVALID" });
+    expect(await confirmEmail(tokenIn(fresh.payload, "confirmUrl"), NOW)).toEqual({ ok: true, data: "confirmed" });
+    // They now log in with the corrected address.
+    expect(await authenticate({ email: "ada@example.com", password: TEST_PASSWORD })).toMatchObject({ ok: true });
+  });
+
+  it("refuses a taken, unchanged or invalid address, and any change once confirmed", async () => {
+    const waiting = await makeUser({ confirmed: false, email: "waiting@example.com" });
+    const other = await makeStudent();
+    expect(await changeUnconfirmedEmail(waiting, { email: other.email }, NOW)).toMatchObject({ ok: false, code: "CONFLICT", errors: { email: expect.any(Array) } });
+    expect(await changeUnconfirmedEmail(waiting, { email: "waiting@example.com" }, NOW)).toMatchObject({ ok: false, code: "INVALID" });
+    expect(await changeUnconfirmedEmail(waiting, { email: "not an email" }, NOW)).toMatchObject({ ok: false, code: "INVALID" });
+    expect(await changeUnconfirmedEmail(other, { email: "new@example.com" }, NOW)).toMatchObject({ ok: false, code: "CONFLICT" });
+    const suspended = await makeUser({ confirmed: false, status: "SUSPENDED" });
+    expect(await changeUnconfirmedEmail(suspended, { email: "fresh@example.com" }, NOW)).toMatchObject({ ok: false, code: "FORBIDDEN" });
+    expect(await queued()).toHaveLength(0);
   });
 });
 

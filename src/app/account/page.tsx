@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PasswordForm, ProfileForm, ResendConfirmationForm, TimeZoneForm } from "@/components/forms/account-forms";
+import { PasswordForm, ProfileForm, TimeZoneForm } from "@/components/forms/account-forms";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader, Section } from "@/components/ui/layout";
 import { Tick } from "@/components/ui/marks";
@@ -24,22 +24,14 @@ export default async function AccountPage(props: PageProps<"/account">) {
       <PageHeader title="Account" description={`Signed in as ${user.email}.`} />
       <div className="space-y-14">
         <Section title="Email address" description="Where we send session details, reminders and account messages.">
-          {profile.emailVerifiedAt ? (
-            <p className="flex items-center gap-2 text-lg text-ink">
-              <span className="font-bold break-all">{profile.email}</span>
-              <span className="inline-flex items-center gap-1 text-base font-bold text-tick-text">
-                <Tick className="h-4 w-4" />
-                Confirmed
-              </span>
-            </p>
-          ) : (
-            <div className="max-w-xl space-y-4">
-              <p className="text-lg text-ink">
-                <span className="font-bold break-all">{profile.email}</span> isn&rsquo;t confirmed yet. Open the link we emailed you, or send a new one.
-              </p>
-              <ResendConfirmationForm />
-            </div>
-          )}
+          {/* Only confirmed accounts get this far (requireUser holds the rest at /check-email). */}
+          <p className="flex items-center gap-2 text-lg text-ink">
+            <span className="font-bold break-all">{profile.email}</span>
+            <span className="inline-flex items-center gap-1 text-base font-bold text-tick-text">
+              <Tick className="h-4 w-4" />
+              Confirmed
+            </span>
+          </p>
         </Section>
         <Section title="Profile">
           <ProfileForm name={profile.name} bio={profile.bio} showBio={user.role === "TEACHER"} />

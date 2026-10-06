@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { formAlert } from "./helpers";
+import { emailedLink, formAlert } from "./helpers";
 
 test("a new student signs up, learns, and passes a quiz", async ({ page }) => {
   const email = `e2e-${Date.now()}@example.com`;
@@ -10,7 +10,11 @@ test("a new student signs up, learns, and passes a quiz", async ({ page }) => {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(secret);
   await page.getByRole("button", { name: "Create student account" }).click();
-  await expect(page).toHaveURL(/\/learn\?notice=welcome/);
+  await expect(page).toHaveURL("/check-email");
+
+  // Confirming the address is the only way on.
+  await page.goto(await emailedLink(email, "welcome", "confirmUrl"));
+  await expect(page).toHaveURL(/\/learn\?notice=email-confirmed/);
   await expect(page.getByRole("status")).toContainText("Your account is ready");
 
   await page.goto("/courses/algebra-from-the-ground-up");

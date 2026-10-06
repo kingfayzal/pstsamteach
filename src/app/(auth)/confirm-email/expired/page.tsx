@@ -17,9 +17,9 @@ export default async function ConfirmEmailExpiredPage() {
       {!user ? (
         <>
           <p className="mt-2 mb-8 text-lg text-ink-soft">
-            Confirmation links work for 3 days. Log in, and you can send yourself a new one from your Account page.
+            Confirmation links work for 3 days. Log in and we&rsquo;ll offer to send you a new one.
           </p>
-          <LinkButton href="/login?next=/account">Log in</LinkButton>
+          <LinkButton href="/login">Log in</LinkButton>
         </>
       ) : unconfirmed ? (
         <>

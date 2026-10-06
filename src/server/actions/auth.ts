@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { homePathFor, safeNextPath } from "@/lib/routes";
+import { CHECK_EMAIL_PATH, homePathFor, safeNextPath } from "@/lib/routes";
 import { formDataToObject, type FormState } from "@/lib/validation/form";
 import { loginLimiter, passwordResetLimiter, signupLimiter } from "@/server/auth/rate-limit";
 import { endSession, startSession } from "@/server/auth/session";
@@ -25,7 +25,8 @@ export async function signupAction(_prev: FormState, form: FormData): Promise<Fo
   sendQueuedEmails();
   await startSession(result.data.id);
   await captureTimeZone(result.data.id, await getBrowserTimeZone());
-  redirect(safeNextPath(readString(form, "next")) ?? "/learn?notice=welcome");
+  // Nothing works until the address is confirmed, so that's the next step.
+  redirect(CHECK_EMAIL_PATH);
 }
 
 export async function applyToTeachAction(_prev: FormState, form: FormData): Promise<FormState> {
@@ -37,7 +38,7 @@ export async function applyToTeachAction(_prev: FormState, form: FormData): Prom
   sendQueuedEmails();
   await startSession(result.data.id);
   await captureTimeZone(result.data.id, await getBrowserTimeZone());
-  redirect("/teach/pending");
+  redirect(CHECK_EMAIL_PATH);
 }
 
 export async function loginAction(_prev: FormState, form: FormData): Promise<FormState> {

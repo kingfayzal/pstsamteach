@@ -58,6 +58,8 @@ changes one file.
 - **Confirmed addresses.** New accounts must confirm their address before requesting a
   teacher, booking or messaging. Accounts that existed before this change were marked
   confirmed by the migration, so nobody was locked out of an existing partnership.
+  (2026-10-06: tightened. Every role now confirms before using any signed-in page; see
+  docs/PLAN.md, Phase 4, Rules.)
 
 ## Consequences
 

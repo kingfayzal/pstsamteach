@@ -10,6 +10,7 @@ import {
 import {
   createSessionRecord,
   findActorBySessionToken,
+  findSessionByToken,
   revokeSessionToken,
   revokeUserSessions,
 } from "@/server/auth/session-store";
@@ -133,6 +134,16 @@ describe("session store", () => {
     const { token } = await createSessionRecord(user.id, past);
     expect(await findActorBySessionToken(token)).toBeNull();
     expect(await db.session.count({ where: { userId: user.id } })).toBe(0);
+  });
+
+  it("says whether the user has confirmed their email address", async () => {
+    const confirmed = await makeStudent();
+    const waiting = await makeUser({ confirmed: false });
+    const a = await createSessionRecord(confirmed.id);
+    const b = await createSessionRecord(waiting.id);
+    expect(await findSessionByToken(a.token)).toMatchObject({ actor: { id: confirmed.id }, emailConfirmed: true });
+    expect(await findSessionByToken(b.token)).toMatchObject({ actor: { id: waiting.id }, emailConfirmed: false });
+    expect((await findSessionByToken(b.token))?.actor).not.toHaveProperty("emailVerifiedAt");
   });
 
   it("returns nothing for suspended users", async () => {
