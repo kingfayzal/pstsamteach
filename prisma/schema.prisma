@@ -61,9 +61,24 @@ enum TutoringStatus {
   CANCELLED
 }
 
+enum AccountTokenPurpose {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+
+enum EmailStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
 model User {
   id                   String     @id @default(cuid())
   email                String     @unique
+  /// When the person followed a link we emailed to `email`. Null until then.
+  emailVerifiedAt      DateTime?
   name                 String
   passwordHash         String
   role                 Role       @default(STUDENT)
@@ -98,8 +113,56 @@ model User {
   savedTeachers      SavedTeacher[]      @relation("SavedBy")
   savedBy            SavedTeacher[]      @relation("SavedTeacher")
   sessionAttendance  SessionAttendance[]
+  accountTokens      AccountToken[]
+  emails             EmailOutbox[]
 
   @@index([role, status])
+}
+
+/// A single-use link we emailed (confirm an address, reset a password). Only the SHA-256 of the token is stored.
+model AccountToken {
+  id        String              @id
+  userId    String
+  purpose   AccountTokenPurpose
+  /// The address the link went to. It only counts while that is still the account's email.
+  email     String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@index([expiresAt])
+}
+
+/// Email waiting to go out. Written in the same transaction as the change it reports, then sent after the response.
+model EmailOutbox {
+  id          String      @id @default(cuid())
+  /// Template name, e.g. "password-reset" (src/lib/email/templates.ts).
+  kind        String
+  toEmail     String
+  userId      String?
+  /// Template data. Emptied once a message carrying a sign-in or reset link has been sent.
+  payload     Json
+  status      EmailStatus @default(PENDING)
+  attempts    Int         @default(0)
+  /// Not sent before this time; retries move it later.
+  sendAfter   DateTime    @default(now())
+  /// Never sent after this time, e.g. because the link inside has expired.
+  expiresAt   DateTime?
+  /// A SENDING row whose lease has run out (the sender died mid-send) is picked up again.
+  lockedUntil DateTime?
+  providerId  String?
+  lastError   String?
+  sentAt      DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, sendAfter])
+  @@index([userId, kind])
 }
 
 model Session {

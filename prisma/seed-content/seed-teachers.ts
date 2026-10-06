@@ -58,7 +58,7 @@ export async function seedTeachers(db: ReturnType<typeof createPrismaClient>, id
   for (const spec of TEACHERS) {
     if (!spec.isExisting) {
       const user = await db.user.create({
-        data: { name: spec.name, email: spec.email, passwordHash, role: "TEACHER", status: "ACTIVE", createdAt: new Date(Date.now() - 32 * DAY) },
+        data: { name: spec.name, email: spec.email, passwordHash, role: "TEACHER", status: "ACTIVE", emailVerifiedAt: new Date(Date.now() - 32 * DAY), createdAt: new Date(Date.now() - 32 * DAY) },
       });
       teacherIds[spec.key] = user.id;
     }

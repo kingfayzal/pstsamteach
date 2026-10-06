@@ -136,7 +136,8 @@ export async function addDemoData(db: Db, passwordHash: string): Promise<{ subje
     ];
     const userIds = new Map<string, string>();
     for (const account of accounts) {
-      const fields = { name: account.name, role: account.role, status: "ACTIVE" as const, timeZone: account.timeZone, passwordHash };
+      // Demo addresses can't receive mail, so they start out confirmed.
+      const fields = { name: account.name, role: account.role, status: "ACTIVE" as const, timeZone: account.timeZone, passwordHash, emailVerifiedAt: new Date() };
       const user = await tx.user.upsert({ where: { email: account.email }, create: { email: account.email, ...fields }, update: fields, select: { id: true } });
       await tx.session.deleteMany({ where: { userId: user.id } });
       userIds.set(account.email, user.id);

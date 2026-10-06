@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import type { CourseAction } from "@/lib/course-lifecycle";
 import { formDataToObject, type FormState } from "@/lib/validation/form";
 import { requireRole } from "@/server/auth/session";
+import { sendQueuedEmails } from "@/server/email";
 import {
   approveTeacher,
   changeUserRole,
@@ -30,6 +31,7 @@ export async function approveTeacherAction(userId: string, _prev: FormState): Pr
   const admin = await requireRole("ADMIN");
   const result = await approveTeacher(admin, userId);
   if (!result.ok) return errorState(result);
+  sendQueuedEmails();
   refreshAdmin();
   redirect("/admin/review?notice=teacher-approved");
 }
@@ -38,6 +40,7 @@ export async function declineTeacherAction(userId: string, _prev: FormState): Pr
   const admin = await requireRole("ADMIN");
   const result = await declineTeacher(admin, userId);
   if (!result.ok) return errorState(result);
+  sendQueuedEmails();
   refreshAdmin();
   redirect("/admin/review?notice=teacher-declined");
 }
@@ -46,6 +49,7 @@ export async function suspendUserAction(userId: string, _prev: FormState): Promi
   const admin = await requireRole("ADMIN");
   const result = await suspendUser(admin, userId);
   if (!result.ok) return errorState(result);
+  sendQueuedEmails();
   refreshAdmin();
   return successState("Suspended and signed out everywhere.");
 }
@@ -54,6 +58,7 @@ export async function reactivateUserAction(userId: string, _prev: FormState): Pr
   const admin = await requireRole("ADMIN");
   const result = await reactivateUser(admin, userId);
   if (!result.ok) return errorState(result);
+  sendQueuedEmails();
   refreshAdmin();
   return successState("Reactivated.");
 }

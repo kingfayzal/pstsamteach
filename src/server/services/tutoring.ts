@@ -3,6 +3,7 @@ import { BOOKING_HORIZON_DAYS, findBookableSlot } from "@/lib/scheduling";
 import { bookingSchema, cancelSchema } from "@/lib/validation/teacher";
 import { db } from "@/server/db";
 import { getVideoProvider, type VideoProvider } from "@/server/video";
+import { requireConfirmedEmail } from "./email-confirmation";
 import { closeLiveRooms } from "./live-sessions";
 import { busyIntervals, loadSchedulingProfile, lockSchedules } from "./teacher-common";
 import { type Actor, fail, forbidden, invalid, isActiveRole, notFound, ok, type ServiceResult } from "./result";
@@ -24,6 +25,8 @@ export async function bookSession(
   });
   if (!connection || connection.studentId !== actor.id) return notFound("That teacher");
   if (connection.status !== "ACTIVE") return fail("CONFLICT", "You can book sessions once the teacher has accepted you.");
+  const unconfirmed = await requireConfirmedEmail(actor);
+  if (unconfirmed) return unconfirmed;
 
   const parsed = bookingSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);

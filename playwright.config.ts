@@ -72,6 +72,8 @@ export default defineConfig({
         DATABASE_URL,
         DIRECT_URL: DATABASE_URL,
         NEXT_DIST_DIR: ".next-e2e",
+        // Links in emails point back at this server.
+        APP_URL: `http://localhost:${PORT}`,
         LIVEKIT_URL,
         LIVEKIT_API_KEY: LIVEKIT_KEY,
         LIVEKIT_API_SECRET: process.env.E2E_LIVEKIT_SECRET,

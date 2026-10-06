@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { FormMessage, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { changePasswordAction, setTimeZoneAction, updateProfileAction } from "@/server/actions/account";
+import { changePasswordAction, resendConfirmationAction, setTimeZoneAction, updateProfileAction } from "@/server/actions/account";
 
 export function ProfileForm({ name, bio, showBio }: { name: string; bio: string | null; showBio: boolean }) {
   const [state, action] = useActionState(updateProfileAction, undefined);
@@ -56,6 +56,19 @@ export function TimeZoneForm({ current, suggested, zones }: { current: string | 
       />
       <FormMessage state={state} />
       <SubmitButton pendingLabel="Saving…">Save time zone</SubmitButton>
+    </form>
+  );
+}
+
+/** "Send a new link" for an unconfirmed email address, used in the reminder banner and on the Account page. */
+export function ResendConfirmationForm({ className = "" }: { className?: string }) {
+  const [state, action] = useActionState(resendConfirmationAction, undefined);
+  return (
+    <form action={action} className={`space-y-3 ${className}`}>
+      <SubmitButton pendingLabel="Sending…" variant="secondary" size="sm">
+        Send a new link
+      </SubmitButton>
+      <FormMessage state={state} />
     </form>
   );
 }

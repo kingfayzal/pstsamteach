@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { assertEmailReadyForDeploy } from "./src/lib/email/config";
 import { parseLiveKitConfig } from "./src/lib/live-sessions";
 import { securityHeaderRules } from "./src/lib/security-headers";
 
@@ -6,6 +7,8 @@ const isDev = process.env.NODE_ENV !== "production";
 
 // Throws on a half-finished LiveKit setup, so a bad deploy fails at build time.
 const liveKit = parseLiveKitConfig(process.env);
+// Same for email: a production deploy that can't send would leave nobody able to confirm an address or reset a password.
+assertEmailReadyForDeploy(process.env);
 
 const nextConfig: NextConfig = {
   // Lets the E2E server build into its own folder alongside a running dev server.
