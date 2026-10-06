@@ -169,3 +169,50 @@ LiveKit --signed webhook--> /api/livekit/webhook --> SessionAttendance --> "In t
   sessions and their two people are recorded.
 - Only `/sessions/*` may use the camera, microphone and screen sharing or connect to the LiveKit host.
 - No recording until there's a consent and storage policy.
+
+---
+
+# Phase 4 — Email
+
+Email goes through Resend ([ADR-0002](adr/0002-resend-for-transactional-email.md)), in
+batches, most important first.
+
+## Batch 1: account emails (done)
+
+| Event | Email | To |
+| --- | --- | --- |
+| Student signs up | Welcome, with a link to confirm the address | The student |
+| Teacher applies | Application received, with a confirmation link | The applicant |
+| "Send a new link" | A fresh confirmation link | The person asking |
+| "Forgot your password?" | A one-hour, single-use reset link | The account, if there is one |
+| Password changed (Account page or reset link) | Security notice, with a reset link | The account |
+| Application approved / declined | The decision and what's next | The applicant |
+| Account suspended / restored | What happened and how to get help | The person |
+
+## Flow
+
+```
+service: change + enqueueEmail(tx) ── one transaction ──> EmailOutbox (PENDING)
+action:  sendQueuedEmails() ──after()──> claim due rows (SKIP LOCKED, 2-min lease)
+           ──> render template ──> Resend (idempotency key = row id)
+           ok: SENT (link payloads emptied)   temporary: retry 1m/5m/30m/2h/12h   permanent: FAILED
+daily cron /api/cron/emails: send anything due, prune expired links and old rows
+```
+
+## Rules
+
+- Links in emails point at `APP_URL`, else Vercel's production or branch domain, never the request host.
+- Confirmation links last 3 days, reset links one hour; both are single use and tied to the address they went to.
+- Unconfirmed accounts can sign in and browse, but can't request a teacher, accept a student, book or
+  send messages (`requireConfirmedEmail`). Declining and cancelling stay open. A banner offers a new link.
+- Using a reset link confirms the address, voids other reset links and signs out every device.
+- "Forgot your password?" gives the same answer for any address and is rate limited per IP and per address.
+- Without Resend configured, email is printed to the server log (never on production, which won't build without it).
+
+## Next batches
+
+2. Tutoring: request received (teacher), accepted or declined (student), session booked (both, with an
+   `.ics` invite), reminders 24 hours and 1 hour before (Resend scheduled sends, cancelled with the
+   session), session cancelled, partnership ended.
+3. Everything else, with notification preferences and one-click unsubscribe: new messages while away
+   (batched), marked work, course review decisions, announcements.
