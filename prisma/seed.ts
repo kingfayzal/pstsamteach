@@ -15,6 +15,7 @@ import { grammar, persuasiveEssay } from "./seed-content/english";
 import { algebra, fractions } from "./seed-content/maths";
 import { bassGuitar } from "./seed-content/music";
 import { dosage, infection } from "./seed-content/nursing";
+import { CATALOG } from "./seed-content/catalog";
 import { yorubaBasics } from "./seed-content/yoruba";
 import { seedTeachers } from "./seed-content/seed-teachers";
 import type { SeedCourse } from "./seed-content/types";
@@ -30,21 +31,9 @@ const db = createPrismaClient(url);
 const DAY = 24 * 60 * 60 * 1000;
 const daysAgo = (n: number) => new Date(Date.now() - n * DAY);
 
+/** The platform's catalog (as on every real database), then subjects that exist only in demo data. */
 const SUBJECTS = [
-  {
-    slug: "english",
-    name: "English",
-    tagline: "Grammar, writing and reading with purpose",
-    description: "Clear, correct writing, from sentence structure and punctuation to essays that hold an argument.",
-    color: "#B3374A",
-  },
-  {
-    slug: "mathematics",
-    name: "Mathematics",
-    tagline: "Number, algebra and problem solving",
-    description: "Work from the foundations up: arithmetic, algebra and the reasoning behind every step.",
-    color: "#2356C2",
-  },
+  ...CATALOG.map(({ topics: _topics, ...subject }) => subject),
   {
     slug: "nursing",
     name: "Nursing",
@@ -66,7 +55,7 @@ const SUBJECTS = [
     description: "Lessons from working musicians for ages 13 and above, starting with bass guitar: technique, timing and grooves that hold a band together.",
     color: "#6B3FA0",
   },
-] as const;
+];
 
 const PEOPLE = {
   admin: { name: "Platform Admin", email: "admin@example.com", role: "ADMIN" as const },
